@@ -14,8 +14,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/assets', express.static(path.join(__dirname, 'assets')));
 app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
 
-// Importar conexión BD
-const db = require('./config/database');
+// Importar conexión BD (pool de mysql2/promise)
+const { pool } = require('./config/database');
 
 // Rutas de la API
 const productosRoutes = require('./routes/productos');
@@ -33,7 +33,7 @@ app.get('/', (req, res) => {
 // Ruta health/db para verificar conexión real
 app.get('/health/db', async (req, res) => {
     try {
-        const [rows] = await db.query("SELECT 1");
+        const [rows] = await pool.query("SELECT 1");
         return res.json({ db: true, rows });
     } catch (err) {
         return res.json({ db: false, error: err.message });
@@ -44,7 +44,7 @@ app.get('/health/db', async (req, res) => {
 (async () => {
     console.log("🔍 Probando conexión inicial a la BD...");
     try {
-        const [rows] = await db.query("SELECT 1");
+        const [rows] = await pool.query("SELECT 1");
         console.log("✅ Conexión inicial OK:", rows);
     } catch (err) {
         console.error("❌ Error inicial de BD:", err);
