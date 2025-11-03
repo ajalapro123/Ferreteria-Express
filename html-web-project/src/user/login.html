@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Iniciar Sesión - Ferretería Express</title>
+  <link rel="stylesheet" href="../assets/css/styles.css">
+  <style>
+    body { font-family: Arial, sans-serif; background:#f9f9f9; margin:0 }
+    header { background:#373736; padding:15px; color:#fff; text-align:center }
+    nav ul { list-style:none; margin:0; padding:0; display:flex; gap:14px; justify-content:center; flex-wrap:wrap }
+    nav a { color:#fff; text-decoration:none; font-weight:bold }
+    main { max-width:400px; margin:50px auto; background:#fff; padding:30px; border-radius:8px; box-shadow:0 2px 10px rgba(0,0,0,.1) }
+    label { display:block; margin-top:10px; font-weight:bold }
+    input { width:100%; padding:10px; margin-top:5px; border:1px solid #ccc; border-radius:5px }
+    button { width:100%; margin-top:20px; padding:10px; background:#ff6600; border:none; color:#fff; font-size:16px; font-weight:bold; border-radius:5px; cursor:pointer }
+    button:hover { background:#e65100 }
+    #msg { color:#c62828; text-align:center; margin-top:10px }
+  </style>
+</head>
+<body>
+<header>
+  <h1>Ferretería Express</h1>
+  <nav>
+    <ul>
+      <li><a href="../index.html">Inicio</a></li>
+      <li><a href="../catalog/catalog.html">Catálogo</a></li>
+      <li><a href="../cart/cart.html">Carrito</a></li>
+      <!-- Estos IDs los usa auth.js para mostrar/ocultar según sesión -->
+      <li><a id="link-login" href="./login.html">Login</a></li>
+      <li><a id="link-reg" href="./register.html">Registro</a></li>
+      <li><a id="link-logout" href="#" style="display:none">Cerrar sesión</a></li>
+      <li><span id="saludo"></span></li>
+    </ul>
+  </nav>
+</header>
+
+<main>
+  <h2>Iniciar Sesión</h2>
+  <form id="loginForm" autocomplete="on">
+    <label for="correo">Correo</label>
+    <input type="email" id="correo" required autocomplete="email" />
+    <label for="password">Contraseña</label>
+    <input type="password" id="password" required autocomplete="current-password" />
+    <button type="submit">Iniciar sesión</button>
+  </form>
+  <p id="msg"></p>
+</main>
+
+<!-- Script de saludo/Logout que reutilizas en todas las páginas -->
+
+<script src="../assets/js/auth.js"></script>
+
+
+
+<script>
+  const API_URL = "http://localhost:3000"; // cámbialo si usas Render
+
+  const form = document.getElementById("loginForm");
+  const msg = document.getElementById("msg");
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    msg.textContent = "";
+
+    const correo = document.getElementById("correo").value.trim();
+    const password = document.getElementById("password").value;
+
+    try {
+      const res = await fetch(`${API_URL}/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ correo, password }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        msg.textContent = data.mensaje || "Error al iniciar sesión";
+        return;
+      }
+      localStorage.getItem("usuario")
+
+
+      // Guarda al usuario y redirige al inicio
+      localStorage.setItem("usuario", JSON.stringify(data.usuario));
+      // Si navegas por archivos / Live Server:
+      window.location.href = "../index.html";
+
+      // Si sirves todo con Express y /src expuesto:
+      // window.location.href = "/src/index.html";
+    } catch (error) {
+      console.error(error);
+      msg.textContent = "No se pudo conectar con el servidor.";
+    }
+  });
+</script>
+</body>
+</html>
+
+
+
+

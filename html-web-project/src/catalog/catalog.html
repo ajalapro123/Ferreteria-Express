@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Catálogo de productos</title>
+  <link rel="stylesheet" href="../assets/css/styles.css">
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; background: #f4f4f4; }
+    header { background: #414141; color: #fff; padding: 15px; text-align: center; }
+    header h1 { margin: 0; }
+    nav ul { list-style: none; display: flex; justify-content: center; gap: 15px; padding: 0; margin: 10px 0 0; }
+    nav ul li a { color: white; text-decoration: none; font-weight: bold; }
+
+    .productos-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; padding: 20px; }
+    .producto-card { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); text-align: center; }
+    .producto-card h3 { margin: 10px 0 6px; color: #222; }
+    .producto-card p { margin: 6px 0; }
+
+    .producto-img{
+      width: 100%;
+      height: 160px;
+      object-fit: contain;
+      border-radius: 6px;
+      margin-bottom: 8px;
+      background: #fafafa;
+    }
+
+    .btn-comprar { margin-top: 10px; padding: 10px 15px; background: #ff6600; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+    .btn-comprar:hover { background: #e65c00; }
+
+    /* Carrito lateral */
+    .carrito { position: fixed; top: 0; right: -400px; width: 350px; height: 100%; background: white; box-shadow: -2px 0 5px rgba(0,0,0,0.3); padding: 20px; transition: right 0.3s ease; overflow-y: auto; z-index: 1000; }
+    .carrito.abierto { right: 0; }
+    .carrito h2 { margin-top: 0; }
+    .carrito-item { display: flex; justify-content: space-between; align-items: center; margin: 10px 0; border-bottom: 1px solid #ddd; padding-bottom: 10px; }
+    .carrito-item button { background: none; border: none; color: red; cursor: pointer; font-size: 14px; }
+    .carrito-footer { margin-top: 20px; text-align: center; }
+    .btn-finalizar, .btn-ver-carrito { display: block; width: 100%; padding: 12px; margin: 8px 0; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; }
+    .btn-finalizar { background: #ff6600; color: white; font-weight: bold; }
+    .btn-ver-carrito { background: #f4f4f4; color: #333; border: 1px solid #ddd; }
+    .btn-cerrar { float: right; background: none; border: none; font-size: 20px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Catálogo de Productos</h1>
+    <nav>
+      <ul>
+        <li><a href="../index.html">Inicio</a></li>
+        <li><a href="../cart/cart.html">Carrito</a></li>
+        <li><a href="../user/login.html">Login</a></li>
+        <li><a href="../user/register.html">Registro</a></li>
+        <li><a href="../orders/history.html">Historial</a></li>
+        <li><a href="../contact/contact.html">Contacto</a></li>
+        <li><a href="../support/support.html">Soporte</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main>
+    <h2 style="text-align:center; margin-top:20px;">Productos destacados</h2>
+    <div id="productos" class="productos-grid"></div>
+  </main>
+
+  <!-- Carrito lateral -->
+  <div id="carrito" class="carrito">
+    <button class="btn-cerrar" onclick="toggleCarrito()">✖</button>
+    <h2>Carrito</h2>
+    <div id="carrito-items"></div>
+    <div class="carrito-footer">
+      <p id="carrito-total">Total: $0</p>
+      <button class="btn-finalizar">Finalizar pedido</button>
+      <button class="btn-ver-carrito" onclick="irAlCarrito()">Ver carrito</button>
+    </div>
+  </div>
+  
+  <script>
+  // --- Config sin import (evita errores de ESM si abres con file://) ---
+  const API_URL = "http://localhost:3001";
+
+  let carrito = [];
+  let productosCache = [];
+
+  function getCartLS(){ return JSON.parse(localStorage.getItem("carrito")||"[]"); }
+  function setCartLS(v){
+    localStorage.setItem("carrito", JSON.stringify(v));
+    localStorage.setItem("cart", JSON.stringify(v));
+  }
+
+  // ----- Cargar y pintar catálogo -----
+  async function cargarProductos(){
+    const cont = document.getElementById("productos");
+    try {
+      const res = await fetch(`${API_URL}/productos`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      productosCache = await res.json();
+
+      cont.innerHTML = "";
+      if (!Array.isArray(productosCache) || !productosCache.length) {
+        cont.innerHTML = "<p>No hay productos para mostrar.</p>";
+        return;
+      }
+
+      productosCache.forEach(p => {
+        const agotado = Number(p.cantidad||0) <= 0;
+        cont.innerHTML += `
+          <div class="producto-card" data-id="${p.id}">
+      <img src="${p.imagenUrl||""}" alt="${p.nombre}" class="producto-img"
+        onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns='\''http://www.w3.org/2000/svg'\'' width='\''300'\'' height='\''200'\''><rect width='\''100%\'' height='\''100%\'' fill='%23e0e0e0'/><text x='\''50%\'' y='\''50%\'' dominant-baseline='\''middle'\'' text-anchor='\''middle'\'' fill='%23666' font-family='\''Arial'\'' font-size='\''20'\''>Sin imagen</text></svg>'">
+            <h3>${p.nombre}</h3>
+            <p><b>Precio:</b> $${Number(p.precio).toLocaleString()}</p>
+            <p><b>Stock:</b> <span class="stock">${p.cantidad}</span></p>
+            <button class="btn-comprar" ${agotado?"disabled":""}
+              onclick="agregarAlCarritoPorId(${p.id})">${agotado?"Agotado":"Añadir al carrito"}</button>
+          </div>`;
+      });
+    } catch (err) {
+      console.error("Error cargando productos:", err);
+      cont.innerHTML = `
+        <div style="padding:12px;background:#fff3cd;border:1px solid #ffeeba;border-radius:6px">
+          <b>No se pudieron cargar los productos.</b><br>
+          Detalle: ${String(err.message || err)}
+        </div>`;
+    }
+  }
+
+  // ----- Carrito lateral -----
+  function toggleCarrito(){ document.getElementById("carrito").classList.toggle("abierto"); }
+
+  function actualizarCarrito(){
+    const cont = document.getElementById("carrito-items");
+    const totalEl = document.getElementById("carrito-total");
+    cont.innerHTML = "";
+    let total = 0;
+    carrito.forEach((it, i) => {
+      total += it.precio * it.cantidad;
+      cont.innerHTML += `
+        <div class="carrito-item">
+          <span>${it.nombre} - $${it.precio.toLocaleString()} x ${it.cantidad}</span>
+          <button onclick="removerDelCarrito(${i})">Eliminar</button>
+        </div>`;
+    });
+    totalEl.textContent = "Total: $" + total.toLocaleString();
+    setCartLS(carrito);
+  }
+
+  window.removerDelCarrito = function(i){ carrito.splice(i,1); actualizarCarrito(); }
+
+  // Evita superar el stock que muestra el catálogo
+  window.agregarAlCarritoPorId = function(id){
+  const p = productosCache.find(x => x.id === id);
+  if (!p) return;
+
+  const enCarrito = carrito.find(x => x.id === id)?.cantidad || 0;
+  const disponible = Number(p.cantidad || 0);
+  if (enCarrito + 1 > disponible) {
+    alert(`No hay suficiente stock de "${p.nombre}".`);
+    return;
+  }
+
+  const ex = carrito.find(x => x.id === id);
+  if (ex) {
+    ex.cantidad += 1;
+  } else {
+    carrito.push({
+      id: p.id,
+      nombre: p.nombre,
+      precio: Number(p.precio),
+      cantidad: 1,
+      imagen: p.imagenUrl   // 👈 importante para que se vea en cart.html
+    });
+  }
+
+  actualizarCarrito();
+  toggleCarrito();
+};
+
+
+  window.irAlCarrito = function(){
+    setCartLS(carrito);
+    location.href = "../cart/cart.html";
+  };
+
+  // ----- FINALIZAR PEDIDO desde el lateral -----
+  document.addEventListener("DOMContentLoaded", () => {
+    const btnFinal = document.querySelector(".btn-finalizar");
+    if (btnFinal) btnFinal.addEventListener("click", finalizarDesdeCatalogo);
+  });
+
+  async function finalizarDesdeCatalogo(){
+  if (!carrito.length){ alert("Tu carrito está vacío."); return; }
+
+  // 👇 toma el usuario del localStorage (si hay sesión)
+  const user = JSON.parse(localStorage.getItem("usuario") || "null");
+
+  const payload = {
+    clienteId: user?.id ?? null,     // <= importante
+    metodoPago: "Efectivo",
+    items: carrito.map(x => ({ id:x.id, cantidad:x.cantidad }))
+  };
+
+    try{
+      const r = await fetch(`${API_URL}/checkout`, {
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await r.json();
+
+      if (!r.ok || !data.ok){
+        alert(data.mensaje || "No se pudo confirmar el pedido");
+        return;
+      }
+
+      alert(`Pedido confirmado. N° venta: ${data.venta.id} — Total: $${Number(data.venta.total).toLocaleString("es-CO")}`);
+
+      carrito = [];
+      actualizarCarrito();
+
+      // Aviso para otras pestañas + refresco propio
+      localStorage.setItem("lastCheckout", String(Date.now()));
+      await cargarProductos();
+
+    }catch(err){
+      console.error(err);
+      alert("Error procesando el pedido.");
+    }
+  }
+
+  // Escucha compras hechas en otras pestañas (cart.html)
+  window.addEventListener("storage", (e) => {
+    if (e.key === "lastCheckout" && e.newValue) cargarProductos();
+  });
+
+  // Init
+  carrito = getCartLS();
+  actualizarCarrito();
+  cargarProductos();
+</script>
+</body>
+</html>
+
+
+
+

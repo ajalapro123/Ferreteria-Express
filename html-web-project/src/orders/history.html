@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Historial de compras</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <link rel="stylesheet" href="../assets/css/styles.css">
+  <style>
+    body{font-family:Arial,sans-serif;margin:0;background:#f4f4f4}
+    header{background:#414141;color:#fff;padding:15px;text-align:center}
+    header h1{margin:0}
+    nav ul{list-style:none;display:flex;gap:15px;justify-content:center;margin:10px 0 0;padding:0}
+    nav a{color:#fff;text-decoration:none;font-weight:bold}
+    main{max-width:980px;margin:20px auto;padding:16px}
+    h2{margin-top:0;text-align:center}
+    .venta{background:#fff;border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,.08);margin-bottom:16px;padding:16px}
+    .venta-head{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+    .venta-id{font-weight:bold}
+    .venta-items{margin-top:10px;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}
+    .item{display:flex;gap:10px;background:#fafafa;border-radius:8px;padding:10px;align-items:center}
+    .item img{width:64px;height:64px;object-fit:cover;border-radius:8px;background:#fff}
+    .tag{display:inline-block;padding:3px 8px;border-radius:999px;background:#eee;font-size:12px}
+    .empty{background:#fff;border-radius:10px;padding:18px;text-align:center}
+  </style>
+</head>
+<body>
+<header>
+  <h1>Historial de compras</h1>
+  <nav>
+    <ul>
+      <li><a href="../index.html">Inicio</a></li>
+      <li><a href="../catalog/catalog.html">Catálogo</a></li>
+      <li><a href="../cart/cart.html">Carrito</a></li>
+      <li><a href="../user/login.html" id="link-login">Login</a></li>
+      <li><a href="../user/register.html" id="link-reg">Registro</a></li>
+      <li><a href="#" id="link-logout" style="display:none">Cerrar sesión</a></li>
+    </ul>
+  </nav>
+</header>
+
+<main>
+  <h2 id="titulo"></h2>
+  <div id="historial"></div>
+</main>
+
+<script>
+  // === Config ===
+  const API_URL = "http://localhost:3000";
+  const TZ = "America/Bogota";
+
+  // === Helpers de dinero/fecha ===
+  const fmtMoney = n => Number(n||0).toLocaleString("es-CO", { minimumFractionDigits: 0 });
+
+  // Convierte "YYYY-MM-DD" o "YYYY-MM-DD HH:mm:ss" a Date local
+  function parseFechaCol(s) {
+    if (!s) return null;
+    if (s instanceof Date) return s;
+    const m = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?$/.exec(String(s));
+    if (m) {
+      const [_, Y, M, D, h="00", mi="00", se="00"] = m;
+      return new Date(+Y, +M-1, +D, +h, +mi, +se);
+    }
+    return new Date(s); // fallback
+  }
+
+  function sameLocalDay(a, b) {
+    const fa = a.toLocaleDateString("es-CO", { timeZone: TZ });
+    const fb = b.toLocaleDateString("es-CO", { timeZone: TZ });
+    return fa === fb;
+  }
+
+  function diffLocalDays(a, b) {
+    const da = new Date(a.toLocaleDateString("en-CA", { timeZone: TZ })); // YYYY-MM-DD
+    const db = new Date(b.toLocaleDateString("en-CA", { timeZone: TZ }));
+    return Math.round((da - db) / 86400000);
+  }
+
+  // “Hoy, 3:25 p. m.” / “Ayer, 10:12 a. m.” / “19 de octubre de 2025, 3:00 p. m.”
+  function fmtFechaActual(s) {
+    const d = parseFechaCol(s);
+    if (!d || isNaN(d)) return String(s);
+    const now = new Date();
+
+    if (sameLocalDay(d, now)) {
+      const hora = new Intl.DateTimeFormat("es-CO", { timeStyle: "short", timeZone: TZ }).format(d);
+      return `Hoy, ${hora}`;
+    }
+    const delta = diffLocalDays(now, d); // hoy - d (en días)
+    if (delta === 1) {
+      const hora = new Intl.DateTimeFormat("es-CO", { timeStyle: "short", timeZone: TZ }).format(d);
+      return `Ayer, ${hora}`;
+    }
+    return new Intl.DateTimeFormat("es-CO", {
+      dateStyle: "long",
+      timeStyle: "short",
+      timeZone: TZ
+    }).format(d);
+  }
+
+  // === UI sesión simple (muestra/oculta links) ===
+  const usuario = JSON.parse(localStorage.getItem("usuario") || "null");
+  const linkLogin = document.getElementById("link-login");
+  const linkReg   = document.getElementById("link-reg");
+  const linkOut   = document.getElementById("link-logout");
+  const tituloEl  = document.getElementById("titulo");
+  const cont      = document.getElementById("historial");
+
+  if (linkLogin && linkReg && linkOut) {
+    if (usuario) {
+      linkLogin.style.display = "none";
+      linkReg.style.display = "none";
+      linkOut.style.display = "inline";
+      linkOut.onclick = (e)=>{ e.preventDefault(); localStorage.removeItem("usuario"); location.reload(); };
+    } else {
+      linkOut.style.display = "none";
+    }
+  }
+
+  // === Carga inicial ===
+  if (!usuario) {
+    if (tituloEl) tituloEl.textContent = "Debes iniciar sesión para ver tu historial.";
+    if (cont) cont.innerHTML = `<div class="empty">No has iniciado sesión. <a href="../user/login.html">Ir a Login</a></div>`;
+  } else {
+    if (tituloEl) tituloEl.textContent = `Historial de ${usuario.nombre}`;
+    cargarHistorial(usuario.id); // 👈 Asegúrate de que esto se ejecute
+  }
+
+  // === Fetch y render del historial ===
+  async function cargarHistorial(clienteId){
+    if (!cont) return;
+    cont.innerHTML = "Cargando...";
+    try {
+      const res = await fetch(`${API_URL}/historial?clienteId=${clienteId}`);
+      const data = await res.json();
+
+      if (!res.ok || !data.ok) {
+        console.error("Historial error:", data);
+        cont.innerHTML = `<div class="empty">No se pudo cargar el historial.</div>`;
+        return;
+      }
+
+      const ventas = data.ventas || [];
+      if (!ventas.length) {
+        cont.innerHTML = `<div class="empty">Aún no tienes compras registradas.</div>`;
+        return;
+      }
+
+      cont.innerHTML = "";
+      ventas.forEach(v => {
+        const box = document.createElement("div");
+        box.className = "venta";
+        box.innerHTML = `
+          <div class="venta-head">
+            <div class="venta-id">Venta #${v.id}</div>
+            <div><span class="tag">${v.metodo_pago || "—"}</span></div>
+            <div>Fecha: <b>${fmtFechaActual(v.fecha_venta)}</b></div>  <!-- 👈 usamos fmtFechaActual -->
+            <div>Total: <b>$${fmtMoney(v.total_pagar)}</b></div>
+          </div>
+          <div class="venta-items"></div>
+        `;
+
+        const list = box.querySelector(".venta-items");
+        (v.items || []).forEach(it => {
+          const card = document.createElement("div");
+          card.className = "item";
+          card.innerHTML = `
+            <img src="${it.imagenUrl || "../assets/img/no-image.jpg"}"
+                 onerror="this.src='../assets/img/no-image.jpg'">
+            <div>
+              <div><b>${it.nombre}</b></div>
+              <div>Cant: ${it.cantidad} · $${fmtMoney(it.precio_unitario)} c/u</div>
+              <div>Subtotal: <b>$${fmtMoney(it.subtotal)}</b></div>
+            </div>
+          `;
+          list.appendChild(card);
+        });
+
+        cont.appendChild(box);
+      });
+
+    } catch (err) {
+      console.error(err);
+      cont.innerHTML = `<div class="empty">Error cargando historial.</div>`;
+    }
+  }
+</script>
+
+
+</body>
+</html>

@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Carrito de Compras</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="../assets/css/styles.css" />
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; background: #f9f9f9; }
+    header { background: #373736; padding: 15px; color: white; text-align: center; }
+    header h1 { margin: 0; }
+    nav ul { list-style: none; padding: 0; margin: 10px 0 0; display: flex; justify-content: center; gap: 15px; }
+    nav ul li a { color: white; text-decoration: none; font-weight: bold; }
+    nav ul li a:hover { text-decoration: underline; }
+    main { max-width: 960px; margin: 20px auto; padding: 20px; }
+    h2 { text-align: center; margin-bottom: 20px; }
+
+    .carrito-item { display: flex; align-items: center; gap: 14px; background: #fff; padding: 14px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,.08); margin-bottom: 14px; }
+    .carrito-item img { width: 88px; height: 88px; object-fit: cover; border-radius: 8px; background: #fafafa; }
+    .carrito-info { flex: 1; min-width: 0; }
+    .carrito-info h3 { margin: 0 0 6px; }
+    .carrito-info p { margin: 2px 0; color: #555; font-size: 14px; }
+
+    .carrito-acciones { display: flex; align-items: center; gap: 8px; }
+    .cantidad-btn { background: #2E7D32; color: #fff; border: none; padding: 6px 10px; cursor: pointer; border-radius: 6px; font-size: 16px; }
+    .cantidad-btn:hover { background: #1B5E20; }
+
+    .remove-btn { background: #e53935; color: #fff; border: none; padding: 6px 10px; cursor: pointer; border-radius: 6px; font-size: 14px; }
+    .remove-btn:hover { background: #c62828; }
+
+    .subtotal { font-weight: bold; min-width: 120px; text-align: right; }
+    .resumen { background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,.08); text-align: center; margin-top: 18px; }
+    .btn-finalizar { margin-top: 12px; background: #ff6600; color: #fff; border: none; padding: 12px 20px; cursor: pointer; border-radius: 8px; font-size: 16px; font-weight: bold; }
+    .btn-finalizar:hover { background: #e65100; }
+    .acciones-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+    .link { color:#ff6600; text-decoration:none; font-weight:700; }
+    .link:hover { text-decoration:underline; }
+    .empty { background:#fff; padding:18px; border-radius:10px; text-align:center; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Carrito de Compras</h1>
+    <nav>
+      <ul>
+        <li><a href="../index.html">Inicio</a></li>
+        <li><a href="../catalog/catalog.html">Catálogo</a></li>
+        <li><a href="../user/login.html">Login</a></li>
+        <li><a href="../user/register.html">Registro</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main>
+    <div class="acciones-top">
+      <h2>Productos en tu carrito</h2>
+      <a class="link" href="../catalog/catalog.html">← Seguir comprando</a>
+    </div>
+
+    <div id="carrito"></div>
+
+    <div id="resumen" class="resumen" style="display:none;">
+      <h3 id="total">Total: $0</h3>
+      <button class="btn-finalizar" onclick="finalizarCompra()">Finalizar Pedido</button>
+    </div>
+  </main>
+
+  <script>
+    // ===== Config =====
+    const API_URL = "http://localhost:3000";
+
+    // ===== Storage =====
+    function getCart() {
+      const a = JSON.parse(localStorage.getItem("carrito") || "[]");
+      if (Array.isArray(a) && a.length) return a;
+      return JSON.parse(localStorage.getItem("cart") || "[]");
+    }
+    function setCart(items){
+      localStorage.setItem("carrito", JSON.stringify(items));
+      localStorage.setItem("cart", JSON.stringify(items));
+    }
+    function fmt(n){ return Number(n||0).toLocaleString("es-CO"); }
+
+    // Resolver URL de imagen guardada en el carrito
+    // (acepta absoluta, /uploads/... o relativa guardada desde el catálogo)
+    function normalizarImagen(src){
+      if (!src) return "../assets/img/no-image.jpg";
+      if (/^https?:\/\//i.test(src)) return src; // absoluta
+      if (src.startsWith("/")) return src;       // root-relative del backend
+      return `../${src}`;                         // relativa desde /cart/cart.html
+    }
+
+    // ===== UI =====
+    function mostrarCarrito() {
+      const cont = document.getElementById("carrito");
+      const resumen = document.getElementById("resumen");
+      const totalEl = document.getElementById("total");
+
+      let carrito = getCart();
+      cont.innerHTML = "";
+
+      if (!carrito.length) {
+        cont.innerHTML = `<div class="empty">El carrito está vacío 🛒</div>`;
+        if (resumen) resumen.style.display = "none";
+        return;
+      }
+
+      let total = 0;
+      carrito.forEach((p, i) => {
+        const precio = Number(p.precio||0);
+        const cant = Number(p.cantidad||1);
+        const sub = precio * cant;
+        total += sub;
+
+        const imgSrc = normalizarImagen(p.imagen || p.imagenUrl);
+
+        const item = document.createElement("div");
+        item.className = "carrito-item";
+        item.innerHTML = `
+          <img src="${imgSrc}" alt="${p.nombre}" onerror="this.src='../assets/img/no-image.jpg'">
+          <div class="carrito-info">
+            <h3>${p.nombre}</h3>
+            <p>Precio: $${fmt(precio)}</p>
+            <p>Cantidad: ${fmt(cant)}</p>
+          </div>
+          <div class="carrito-acciones">
+            <button class="cantidad-btn" data-a="menos">-</button>
+            <button class="cantidad-btn" data-a="mas">+</button>
+            <button class="remove-btn" data-a="eliminar">Eliminar</button>
+          </div>
+          <div class="subtotal">$${fmt(sub)}</div>
+        `;
+
+        item.querySelector('[data-a="menos"]').onclick = () => {
+          carrito[i].cantidad = Math.max(0, cant - 1);
+          if (carrito[i].cantidad === 0) carrito.splice(i,1);
+          setCart(carrito); mostrarCarrito();
+        };
+        item.querySelector('[data-a="mas"]').onclick = () => {
+          carrito[i].cantidad = cant + 1;
+          setCart(carrito); mostrarCarrito();
+        };
+        item.querySelector('[data-a="eliminar"]').onclick = () => {
+          carrito.splice(i,1);
+          setCart(carrito); mostrarCarrito();
+        };
+
+        cont.appendChild(item);
+      });
+
+      if (totalEl) totalEl.textContent = "Total: $" + fmt(total);
+      if (resumen) resumen.style.display = "block";
+    }
+
+    // ===== Checkout =====
+    async function finalizarCompra() {
+  const items = getCart();
+  if (!items.length) { alert("Tu carrito está vacío."); return; }
+
+  const user = JSON.parse(localStorage.getItem("usuario") || "null");
+
+  const payload = {
+    clienteId: user?.id ?? null,     // <= importante
+    metodoPago: "Efectivo",
+    items: items.map(x => ({ id:+x.id, cantidad:+(x.cantidad||1) }))
+   };
+
+      try {
+        const r = await fetch(`${API_URL}/checkout`, {
+          method:"POST",
+          headers:{ "Content-Type":"application/json" },
+          body: JSON.stringify(payload)
+        });
+        const data = await r.json();
+        if (!r.ok || !data.ok) { alert(data.mensaje||"No se pudo confirmar"); return; }
+
+        alert(`Pedido confirmado. N° venta: ${data.venta.id} — Total: $${fmt(data.venta.total)}`);
+        localStorage.removeItem("carrito");
+        localStorage.removeItem("cart");
+        localStorage.setItem("lastCheckout", String(Date.now()));
+        mostrarCarrito(); // queda vacío
+
+      } catch (e) {
+        console.error(e);
+        alert("Error procesando el pedido.");
+      }
+    }
+
+    window.finalizarCompra = finalizarCompra;
+
+    document.addEventListener("DOMContentLoaded", mostrarCarrito);
+  </script>
+</body>
+</html>
+
