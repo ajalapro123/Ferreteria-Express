@@ -190,7 +190,7 @@
       const password = document.getElementById("password").value;
 
       // Aquí se enviará la info al backend
-      fetch("http://localhost:3000/register", {
+      fetch("https://ferreteriaexpress.shop/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, email, phone, password })
