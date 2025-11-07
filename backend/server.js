@@ -6,13 +6,26 @@ const cors = require('cors');
 const app = express();
 
 // Middlewares
-app.use(cors());
+app.use(cors({
+  origin: [
+    'http://localhost:5173',      // Vite local, si aplica
+    'https://tu-frontend.netlify.app' // prod
+  ],
+  credentials: true
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Rutas estáticas
-app.use('/assets', express.static(path.join(__dirname, 'assets')));
-app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
+// Rutas estáticas (sirve archivos reales)
+app.use('/assets', express.static(path.join(__dirname, 'assets'), {
+  maxAge: '7d', // opcional: cache
+  etag: true
+}));
+app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads'), {
+  maxAge: '7d',
+  etag: true
+}));
 
 // Importar conexión BD (pool de mysql2/promise)
 const { pool } = require('./config/database');

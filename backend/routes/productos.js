@@ -1,20 +1,29 @@
 const express = require('express');
 const router = express.Router();
-const productoController = require('../controllers/productoController');
+const { pool } = require('../config/database');
 
-// GET /productos - Obtener todos los productos
-router.get('/', productoController.getAllProducts);
+const PUBLIC_URL = process.env.PUBLIC_URL || 'http://localhost:3001';
 
-// GET /productos/:id - Obtener un producto por ID
-router.get('/:id', productoController.getProduct);
+// helper para construir URL de imagen según dónde las guardes
+function buildImageUrl(fileName) {
+  // Si las tienes en /assets/img/productos/
+  return `${PUBLIC_URL}/assets/img/productos/${fileName}`;
 
-// POST /productos - Crear un nuevo producto
-router.post('/', productoController.createProduct);
+  // Si preferiste /uploads/productos/
+  // return `${PUBLIC_URL}/uploads/productos/${fileName}`;
+}
 
-// PUT /productos/:id - Actualizar un producto
-router.put('/:id', productoController.updateProduct);
-
-// DELETE /productos/:id - Eliminar un producto
-router.delete('/:id', productoController.deleteProduct);
+router.get('/', async (req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT id, nombre, precio, cantidad, imagen FROM productos');
+    const data = rows.map(p => ({
+      ...p,
+      url: buildImageUrl(p.imagen)
+    }));
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 module.exports = router;
