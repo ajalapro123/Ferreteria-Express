@@ -6,10 +6,23 @@ function resolverImagen(p) {
   const raw = p?.imagenUrl || p?.imagen || "";
   if (!raw) return "";
   if (/^https?:\/\//i.test(raw)) return raw;
-  if (raw.startsWith("/")) return `${API_URL}${raw}`;
-  if (raw.startsWith("uploads/") || raw.startsWith("assets/")) return `${API_URL}/${raw}`;
-  // fallback a carpeta de productos en backend si sólo viene el nombre
-  return `${API_URL}/assets/img/productos/${raw}`;
+
+  // Si la ruta es absoluta en el servidor (empieza por /), usar el origen del backend
+  try {
+    const backendOrigin = new URL(API_URL).origin;
+    if (raw.startsWith("/")) return backendOrigin + raw;
+    if (raw.startsWith("uploads/") || raw.startsWith("assets/")) return `${backendOrigin}/${raw}`;
+    // intentamos primero la carpeta local del frontend (cuando se abre index/catalog localmente)
+    const local = `../assets/img/productos/${raw}`;
+    // si la página está siendo servida desde el mismo host que el backend, preferimos la ruta backend
+    if (location && backendOrigin && new URL(backendOrigin).hostname === location.hostname) {
+      return `${backendOrigin}/assets/img/productos/${raw}`;
+    }
+    return local;
+  } catch (e) {
+    // si algo falla, devolver ruta local como fallback
+    return `../assets/img/productos/${raw}`;
+  }
 }
 
 function pintarCatalogo(productos) {
@@ -29,12 +42,12 @@ function pintarCatalogo(productos) {
       <button class="btn btn-primary btn-sm">Agregar</button>
     `;
 
-    // en catalog.js al agregar
+    // en catalog.js al agregar (no añadir automáticamente: solo preparamos la URL correcta)
     addToCart({
       id: p.id,
       nombre: p.nombre,
       precio: Number(p.precio),
-      imagen: p.imagenUrl || `${API_URL}/assets/img/productos/${p.imagen}`
+      imagen: resolverImagen(p)
     });
 
     catalogoEl.appendChild(card);

@@ -29,7 +29,6 @@
     .btn-comprar { margin-top: 10px; padding: 10px 15px; background: #ff6600; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
     .btn-comprar:hover { background: #e65c00; }
 
-    /* Carrito lateral */
     .carrito { position: fixed; top: 0; right: -400px; width: 350px; height: 100%; background: white; box-shadow: -2px 0 5px rgba(0,0,0,0.3); padding: 20px; transition: right 0.3s ease; overflow-y: auto; z-index: 1000; }
     .carrito.abierto { right: 0; }
     .carrito h2 { margin-top: 0; }
@@ -76,8 +75,15 @@
   </div>
   
   <script>
-  // --- Config sin import (evita errores de ESM si abres con file://) ---
+  // === Config ===
+  // API del backend
   const API_URL = "https://ferreteriaexpress.shop/api";
+
+  // Origen del backend para construir rutas estáticas (https, sin /api)
+  const BACKEND_ORIGIN = (() => {
+    try { return new URL(API_URL).origin; }
+    catch { return "https://ferreteriaexpress.shop"; }
+  })();
 
   let carrito = [];
   let productosCache = [];
@@ -86,6 +92,18 @@
   function setCartLS(v){
     localStorage.setItem("carrito", JSON.stringify(v));
     localStorage.setItem("cart", JSON.stringify(v));
+  }
+
+  // ---- RESOLVER URL de imagen (corregido) ----
+  // 1) Siempre construimos desde el backend real (https) + /assets/img/productos + nombre en BD
+  // 2) Si no hay 'imagen', mostramos placeholder SVG
+  function srcDeProducto(p){
+    if (p && p.imagen) {
+      const clean = String(p.imagen).replace(/^\/+/, ""); // quitar / inicial si lo tuviera
+      return `${BACKEND_ORIGIN}/assets/img/productos/${clean}`;
+    }
+    // placeholder si no hay nombre
+    return 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="200"><rect width="100%" height="100%" fill="%23e0e0e0"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%23666" font-family="Arial" font-size="20">Sin imagen</text></svg>';
   }
 
   // ----- Cargar y pintar catálogo -----
@@ -104,10 +122,11 @@
 
       productosCache.forEach(p => {
         const agotado = Number(p.cantidad||0) <= 0;
+        const imgSrc = srcDeProducto(p);
         cont.innerHTML += `
           <div class="producto-card" data-id="${p.id}">
-      <img src="${p.imagenUrl||""}" alt="${p.nombre}" class="producto-img"
-        onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns='\''http://www.w3.org/2000/svg'\'' width='\''300'\'' height='\''200'\''><rect width='\''100%\'' height='\''100%\'' fill='%23e0e0e0'/><text x='\''50%\'' y='\''50%\'' dominant-baseline='\''middle'\'' text-anchor='\''middle'\'' fill='%23666' font-family='\''Arial'\'' font-size='\''20'\''>Sin imagen</text></svg>'">
+            <img src="${imgSrc}" alt="${p.nombre}" class="producto-img"
+              onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=&quot;http://www.w3.org/2000/svg&quot; width=&quot;300&quot; height=&quot;200&quot;><rect width=&quot;100%&quot; height=&quot;100%&quot; fill=&quot;%23e0e0e0&quot;/><text x=&quot;50%&quot; y=&quot;50%&quot; dominant-baseline=&quot;middle&quot; text-anchor=&quot;middle&quot; fill=&quot;%23666&quot; font-family=&quot;Arial&quot; font-size=&quot;20&quot;>Sin imagen</text></svg>'">
             <h3>${p.nombre}</h3>
             <p><b>Precio:</b> $${Number(p.precio).toLocaleString()}</p>
             <p><b>Stock:</b> <span class="stock">${p.cantidad}</span></p>
@@ -149,56 +168,53 @@
 
   // Evita superar el stock que muestra el catálogo
   window.agregarAlCarritoPorId = function(id){
-  const p = productosCache.find(x => x.id === id);
-  if (!p) return;
+    const p = productosCache.find(x => x.id === id);
+    if (!p) return;
 
-  const enCarrito = carrito.find(x => x.id === id)?.cantidad || 0;
-  const disponible = Number(p.cantidad || 0);
-  if (enCarrito + 1 > disponible) {
-    alert(`No hay suficiente stock de "${p.nombre}".`);
-    return;
-  }
+    const enCarrito = carrito.find(x => x.id === id)?.cantidad || 0;
+    const disponible = Number(p.cantidad || 0);
+    if (enCarrito + 1 > disponible) {
+      alert(`No hay suficiente stock de "${p.nombre}".`);
+      return;
+    }
 
-  const ex = carrito.find(x => x.id === id);
-  if (ex) {
-    ex.cantidad += 1;
-  } else {
-    carrito.push({
-      id: p.id,
-      nombre: p.nombre,
-      precio: Number(p.precio),
-      cantidad: 1,
-      imagen: p.imagenUrl   // 👈 importante para que se vea en cart.html
-    });
-  }
+    const ex = carrito.find(x => x.id === id);
+    if (ex) {
+      ex.cantidad += 1;
+    } else {
+      carrito.push({
+        id: p.id,
+        nombre: p.nombre,
+        precio: Number(p.precio),
+        cantidad: 1,
+        imagen: srcDeProducto(p) // URL válida para cart.html
+      });
+    }
 
-  actualizarCarrito();
-  toggleCarrito();
-};
-
+    actualizarCarrito();
+    toggleCarrito();
+  };
 
   window.irAlCarrito = function(){
     setCartLS(carrito);
     location.href = "../cart/cart.html";
   };
 
-  // ----- FINALIZAR PEDIDO desde el lateral -----
   document.addEventListener("DOMContentLoaded", () => {
     const btnFinal = document.querySelector(".btn-finalizar");
     if (btnFinal) btnFinal.addEventListener("click", finalizarDesdeCatalogo);
   });
 
   async function finalizarDesdeCatalogo(){
-  if (!carrito.length){ alert("Tu carrito está vacío."); return; }
+    if (!carrito.length){ alert("Tu carrito está vacío."); return; }
 
-  // 👇 toma el usuario del localStorage (si hay sesión)
-  const user = JSON.parse(localStorage.getItem("usuario") || "null");
+    const user = JSON.parse(localStorage.getItem("usuario") || "null");
 
-  const payload = {
-    clienteId: user?.id ?? null,     // <= importante
-    metodoPago: "Efectivo",
-    items: carrito.map(x => ({ id:x.id, cantidad:x.cantidad }))
-  };
+    const payload = {
+      clienteId: user?.id ?? null,
+      metodoPago: "Efectivo",
+      items: carrito.map(x => ({ id:x.id, cantidad:x.cantidad }))
+    };
 
     try{
       const r = await fetch(`${API_URL}/checkout`, {
@@ -218,7 +234,6 @@
       carrito = [];
       actualizarCarrito();
 
-      // Aviso para otras pestañas + refresco propio
       localStorage.setItem("lastCheckout", String(Date.now()));
       await cargarProductos();
 
@@ -228,19 +243,13 @@
     }
   }
 
-  // Escucha compras hechas en otras pestañas (cart.html)
   window.addEventListener("storage", (e) => {
     if (e.key === "lastCheckout" && e.newValue) cargarProductos();
   });
 
-  // Init
   carrito = getCartLS();
   actualizarCarrito();
   cargarProductos();
-</script>
+  </script>
 </body>
 </html>
-
-
-
-
