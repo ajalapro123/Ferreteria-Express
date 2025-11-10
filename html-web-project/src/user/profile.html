@@ -1,47 +1,132 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>User Profile</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mi Perfil - Ferretería Express</title>
     <link rel="stylesheet" href="../assets/css/styles.css">
+    <style>
+        body { font-family: Arial, sans-serif; margin:0; background:#f4f6f8; }
+        header { background:#0D47A1; color:#fff; padding:15px; }
+        nav ul { list-style:none; margin:0; padding:0; display:flex; gap:14px; flex-wrap:wrap }
+        nav a { color:#fff; text-decoration:none; font-weight:bold }
+        .container { max-width:900px; margin:40px auto; background:#fff; padding:30px; border-radius:12px; box-shadow:0 4px 18px rgba(0,0,0,.08) }
+        h1 { margin:0 0 10px; font-size:1.8rem }
+        .profile-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:22px; margin-top:25px }
+        .card { background:#fafafa; border:1px solid #e0e6eb; border-radius:10px; padding:18px; position:relative; overflow:hidden }
+        .card h2 { margin:0 0 12px; font-size:1.1rem; letter-spacing:.5px; color:#333 }
+        .field { margin-bottom:8px; font-size:14px }
+        .field label { font-weight:600; color:#555; display:block }
+        .field span { color:#111 }
+        .actions { margin-top:25px; display:flex; gap:14px; flex-wrap:wrap }
+        .btn { border:0; cursor:pointer; font-weight:600; padding:10px 18px; border-radius:8px; font-size:14px; display:inline-flex; align-items:center; gap:6px }
+        .btn-primary { background:#2563eb; color:#fff }
+        .btn-primary:hover { background:#1e4fbb }
+        .btn-danger { background:#e53935; color:#fff }
+        .btn-danger:hover { background:#c62828 }
+        .empty { text-align:center; padding:60px 20px; color:#555 }
+        footer { margin-top:50px; text-align:center; padding:25px 10px; background:#0D47A1; color:#fff }
+        .badge-role { display:inline-block; padding:4px 10px; background:#ff6600; color:#fff; font-size:12px; border-radius:50px; font-weight:600 }
+    </style>
 </head>
 <body>
-    <header>
-        <h1>User Profile</h1>
-        <nav>
-            <ul>
-                <li><a href="../index.html">Home</a></li>
-                <li><a href="../catalog/catalog.html">Catalog</a></li>
-                <li><a href="../cart/cart.html">Cart</a></li>
-                <li><a href="login.html">Login</a></li>
-                <li><a href="register.html">Register</a></li>
-                <li><a href="../orders/history.html">Order History</a></li>
-                <li><a href="../contact/contact.html">Contact</a></li>
-                <li><a href="../support/support.html">Support</a></li>
-            </ul>
-        </nav>
-    </header>
-    <main>
-        <section>
-            <h2>Edit Profile</h2>
-            <form id="profileForm">
-                <label for="username">Username:</label>
-                <input type="text" id="username" name="username" required>
+<header>
+    <nav>
+        <ul>
+            <li><a href="../index.html">Inicio</a></li>
+            <li><a href="../catalog/catalog.html">Catálogo</a></li>
+            <li><a href="../cart/cart.html">Carrito</a></li>
+            <li><a id="link-login" href="./login.html">Login</a></li>
+            <li><a id="link-reg" href="./register.html">Registro</a></li>
+            <li><a id="link-profile" href="./profile.html" style="display:none">Mi perfil</a></li>
+            <li><a id="link-logout" href="#" style="display:none">Cerrar sesión</a></li>
+            <li><span id="saludo"></span></li>
+        </ul>
+    </nav>
+</header>
 
-                <label for="email">Email:</label>
-                <input type="email" id="email" name="email" required>
+<div class="container">
+    <h1>Mi Perfil</h1>
+    <div id="perfil-contenido" class="empty">Cargando datos...</div>
+    <div class="actions" id="perfil-actions" style="display:none">
+        <button class="btn btn-primary" id="btn-refresh">Refrescar</button>
+        <button class="btn btn-danger" id="btn-logout">Cerrar sesión</button>
+    </div>
+  
+</div>
 
-                <label for="password">Password:</label>
-                <input type="password" id="password" name="password">
-
-                <button type="submit">Update Profile</button>
-            </form>
-        </section>
-    </main>
-    <footer>
-        <p>&copy; 2023 Your Company</p>
+<footer>
+    &copy; 2025 Ferretería Express. Todos los derechos reservados.
     </footer>
-    <script src="../assets/js/user.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="../assets/js/auth.js"></script>
+<script>
+    function getUserSafe() {
+        try { return JSON.parse(localStorage.getItem('usuario')||'null'); } catch { return null; }
+    }
+    function renderProfile() {
+        const u = getUserSafe();
+        const cont = document.getElementById('perfil-contenido');
+        const acts = document.getElementById('perfil-actions');
+        if(!u){
+            Swal.fire({
+                icon:'info',
+                title:'Inicia sesión',
+                text:'Para ver tu perfil necesitas iniciar sesión.',
+                confirmButtonText:'Ir a login'
+            }).then(()=> location.href='./login.html');
+            cont.className='empty';
+            cont.innerHTML='';
+            acts.style.display='none';
+            return;
+        }
+        acts.style.display='flex';
+        cont.className='profile-grid';
+        cont.innerHTML=`
+            <div class='card'>
+                <h2>Datos de la Cuenta</h2>
+                <div class='field'><label>Nombre</label><span>${u.nombre}</span></div>
+                <div class='field'><label>Correo</label><span>${u.correo}</span></div>
+                <div class='field'><label>Usuario</label><span>${u.username||'(email)'}</span></div>
+                <div class='field'><label>ID</label><span>${u.id}</span></div>
+                <div class='field'><label>Rol</label><span class='badge-role'>${u.rol||'cliente'}</span></div>
+            </div>
+            <div class='card'>
+                <h2>Seguridad</h2>
+                <p style='font-size:13px;line-height:1.5'>Tu contraseña se almacena temporalmente sin hash (plan de migración a cifrado pendiente). No compartas tus credenciales.</p>
+                <button class='btn btn-primary' id='btn-change-pass'>Cambiar contraseña</button>
+            </div>
+            <div class='card'>
+                <h2>Preferencias</h2>
+                <p style='font-size:13px;color:#555'>Próximamente: notificaciones, direcciones guardadas y pedidos recientes.</p>
+            </div>
+        `;
+        const btnChange = document.getElementById('btn-change-pass');
+        if(btnChange){
+            btnChange.onclick=()=>{
+                Swal.fire({
+                    title:'Cambiar contraseña',
+                    html:'<input type="password" id="new-pass" class="swal2-input" placeholder="Nueva contraseña">',
+                    confirmButtonText:'Guardar',
+                    showCancelButton:true,
+                    preConfirm:()=>{
+                        const np=document.getElementById('new-pass').value.trim();
+                        if(np.length<4){Swal.showValidationMessage('Mínimo 4 caracteres');return false;}
+                        return np;
+                    }
+                }).then(r=>{
+                    if(r.isConfirmed){
+                        // Aquí iría llamada a backend /change-password (no implementado todavía)
+                        Swal.fire({icon:'success',title:'Actualización',text:'Funcionalidad en desarrollo.'});
+                    }
+                });
+            };
+        }
+    }
+    document.getElementById('btn-refresh').onclick=renderProfile;
+    document.getElementById('btn-logout').onclick=function(e){e.preventDefault(); localStorage.removeItem('usuario'); location.href='./login.html';};
+    renderProfile();
+</script>
 </body>
 </html>

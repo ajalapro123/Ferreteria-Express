@@ -121,8 +121,9 @@
         <li><a href="../index.html">Inicio</a></li>
         <li><a href="../catalog/catalog.html">Catálogo</a></li>
         <li><a href="../cart/cart.html">Carrito</a></li>
-        <li><a href="./login.html">Login</a></li>
-        <li><a href="./register.html">Registro</a></li>
+  <li><a id="link-login" href="./login.html">Login</a></li>
+  <li><a id="link-reg" href="./register.html">Registro</a></li>
+  <li><a id="link-profile" href="./profile.html" style="display:none">Mi perfil</a></li>
         <li><a href="../orders/history.html">Historial</a></li>
         <li><a href="../contact/contact.html">Contacto</a></li>
         <li><a href="../support/support.html">Soporte</a></li>
@@ -164,7 +165,17 @@
 
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script>
-    function registerUser(event) {
+    const API_BASE = 'https://ferreteriaexpress.shop';
+    const REGISTER_PRIMARY = API_BASE + '/api/register';
+    const REGISTER_FALLBACK = API_BASE + '/register';
+
+    function safeJson(response) {
+      const ct = response.headers.get('content-type') || '';
+      if (ct.includes('application/json')) return response.json();
+      return response.text().then(t => ({ success:false, message:t }));
+    }
+
+    async function registerUser(event) {
       event.preventDefault();
       const name = document.getElementById('name').value.trim();
       const email = document.getElementById('email').value.trim();
@@ -176,29 +187,51 @@
         return false;
       }
 
-      Swal.showLoading();
+      Swal.fire({
+        title: 'Creando cuenta...',
+        allowOutsideClick: false,
+        didOpen: () => { Swal.showLoading(); }
+      });
 
-      fetch('https://ferreteriaexpress.shop/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, phone, password })
-      })
-      .then(r => r.json())
-      .then(data => {
-        if (data.success) {
-          const username = data.usuario?.username || '(asignado)';
-          Swal.fire({
-            icon: 'success',
-            title: 'Cuenta creada',
-            html: `<p><strong>Usuario:</strong> <code>${username}</code></p><p>Ahora puedes iniciar sesión.</p>`,
-            confirmButtonText: 'Ir a Login',
-            confirmButtonColor: '#2196F3'
-          }).then(() => window.location.href = './login.html');
-        } else {
-          Swal.fire({ icon:'error', title:'Error', text: data.message || 'No se pudo registrar.' });
+      let res;
+      try {
+        // Intento principal bajo /api
+        res = await fetch(REGISTER_PRIMARY, {
+          method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, email, phone, password })
+        });
+        // Fallback si no existe la ruta /api
+        if (res.status === 404) {
+          res = await fetch(REGISTER_FALLBACK, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, email, phone, password })
+          });
         }
-      })
-      .catch(() => Swal.fire({ icon:'error', title:'Fallo de conexión', text:'Intenta más tarde.' }));
+        const data = await safeJson(res);
+
+        if (!res.ok || !data.success) {
+          Swal.fire({
+            icon: 'error',
+            title: 'No se pudo registrar',
+            text: data.message || data.mensaje || 'Intenta nuevamente.'
+          });
+          return false;
+        }
+
+        const username = data.usuario?.username || '(asignado)';
+        Swal.fire({
+          icon: 'success',
+          title: 'Cuenta creada',
+          html: `<p><strong>Usuario:</strong> <code>${username}</code></p><p>Ahora puedes iniciar sesión.</p>`,
+          confirmButtonText: 'Ir a Login',
+          confirmButtonColor: '#2196F3'
+        }).then(() => window.location.href = './login.html');
+      } catch (err) {
+        console.error(err);
+        Swal.fire({ icon:'error', title:'Fallo de conexión', text:'No se pudo contactar el servidor.' });
+      }
       return false;
     }
   </script>

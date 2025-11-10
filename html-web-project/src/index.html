@@ -138,6 +138,7 @@
         <!-- ✅ Elementos controlados por auth.js -->
         <li><a id="link-login" href="./user/login.html">Login</a></li>
         <li><a id="link-reg" href="./user/register.html">Registro</a></li>
+  <li><a id="link-profile" href="./user/profile.html" style="display:none">Mi perfil</a></li>
         <li><a id="link-logout" href="#" style="display:none">Cerrar sesión</a></li>
         <li><span id="saludo"></span></li>
 
@@ -192,6 +193,8 @@
       .catch(err => console.error("Error cargando productos:", err));
   </script>
 
+  <!-- SweetAlert2 para modales profesionales -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" defer></script>
   <!-- ✅ Script de autenticación -->
   <script src="./assets/js/auth.js" defer></script>
 
