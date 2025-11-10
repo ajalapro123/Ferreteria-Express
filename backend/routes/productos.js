@@ -2,15 +2,13 @@ const express = require('express');
 const router = express.Router();
 const { pool } = require('../config/database');
 
-const PUBLIC_URL = process.env.PUBLIC_URL || 'http://localhost:3001';
+// URL pública base. Se fuerza a producción si no hay variable.
+const PUBLIC_URL = process.env.PUBLIC_URL || 'https://ferreteriaexpress.shop';
 
 // helper para construir URL de imagen según dónde las guardes
 function buildImageUrl(fileName) {
-  // Si las tienes en /assets/img/productos/
+  // Ajusta el path según dónde sirva Nginx las imágenes.
   return `${PUBLIC_URL}/assets/img/productos/${fileName}`;
-
-  // Si preferiste /uploads/productos/
-  // return `${PUBLIC_URL}/uploads/productos/${fileName}`;
 }
 
 router.get('/', async (req, res) => {

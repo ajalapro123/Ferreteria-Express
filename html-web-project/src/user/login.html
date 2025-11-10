@@ -48,11 +48,10 @@
   <p id="msg"></p>
 </main>
 
-<!-- Script de saludo/Logout que reutilizas en todas las páginas -->
-
-<script src="../assets/js/auth.js"></script>
-<!-- SweetAlert2 para mensajes bonitos de éxito/error -->
+<!-- SweetAlert2 primero para que auth.js la encuentre -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<!-- Script de saludo/Logout (cache busting con versión) -->
+<script src="../assets/js/auth.js?v=20251110"></script>
 
 
 

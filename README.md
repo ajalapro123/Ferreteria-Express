@@ -46,11 +46,11 @@ Abre `backend/.env` y completa:
   npm start
   ```
 
-Backend en http://localhost:3001
+Backend en producción: https://ferreteriaexpress.shop (evitamos localhost en despliegue)
 
 ## Notas de limpieza
 
-- `backend/config/db-ssh.js`, `backend/config/database-ssh.js` y `backend/test-ssh-connection.js` ya no se usan (puedes borrarlos).
+- `backend/config/db-ssh.js`, `backend/config/database-ssh.js` y `backend/test-ssh-connection.js` ya no se usan (puedes borrarlos si aún existen).
 - El `package.json` del raíz no es necesario para el backend. Se puede eliminar para evitar confusiones (el backend tiene el suyo propio). `html-web-project` mantiene su `package.json` aparte.
 
 ## Troubleshooting
