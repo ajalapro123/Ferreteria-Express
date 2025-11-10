@@ -24,6 +24,7 @@ const proveedoresRoutes = require('./routes/proveedores');
 const usuariosRoutes = require('./routes/usuarios');
 const ventasRoutes = require('./routes/ventas');
 const soporteRoutes = require('./routes/soporte');
+const authRoutes = require('./routes/auth');
 
 // Ruta de prueba para ver si la API responde
 app.get('/', (req, res) => {
@@ -58,6 +59,8 @@ app.use('/proveedores', proveedoresRoutes);
 app.use('/usuarios', usuariosRoutes);
 app.use('/ventas', ventasRoutes);
 app.use('/soporte', soporteRoutes);
+// Rutas de autenticación (ej: POST /login)
+app.use('/', authRoutes);
 
 // 404 para rutas no encontradas
 app.use((req, res) => {

@@ -22,9 +22,7 @@
       text-align: center;
     }
 
-    header h1 {
-      margin: 0;
-    }
+    header h1 { margin: 0; }
 
     nav ul {
       list-style: none;
@@ -35,9 +33,7 @@
       gap: 15px;
     }
 
-    nav ul li {
-      display: inline;
-    }
+    nav ul li { display: inline; }
 
     nav ul li a {
       color: white;
@@ -45,9 +41,7 @@
       font-weight: bold;
     }
 
-    nav ul li a:hover {
-      text-decoration: underline;
-    }
+    nav ul li a:hover { text-decoration: underline; }
 
     main {
       flex: 1;
@@ -66,15 +60,9 @@
       text-align: center;
     }
 
-    .register-container h2 {
-      margin-bottom: 20px;
-      color: #333;
-    }
+    .register-container h2 { margin-bottom: 20px; color: #333; }
 
-    .form-group {
-      margin-bottom: 15px;
-      text-align: left;
-    }
+    .form-group { margin-bottom: 15px; text-align: left; }
 
     .form-group label {
       display: block;
@@ -104,14 +92,9 @@
       transition: background 0.3s;
     }
 
-    .btn-register:hover {
-      background: #1976D2;
-    }
+    .btn-register:hover { background: #1976D2; }
 
-    .extra-links {
-      margin-top: 15px;
-      font-size: 14px;
-    }
+    .extra-links { margin-top: 15px; font-size: 14px; }
 
     .extra-links a {
       color: #2196F3;
@@ -119,9 +102,7 @@
       margin: 0 5px;
     }
 
-    .extra-links a:hover {
-      text-decoration: underline;
-    }
+    .extra-links a:hover { text-decoration: underline; }
 
     footer {
       background: #0D47A1;
@@ -181,30 +162,44 @@
     <p>&copy; 2025 Tienda Online. Todos los derechos reservados.</p>
   </footer>
 
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script>
     function registerUser(event) {
       event.preventDefault();
-      const name = document.getElementById("name").value;
-      const email = document.getElementById("email").value;
-      const phone = document.getElementById("phone").value;
-      const password = document.getElementById("password").value;
+      const name = document.getElementById('name').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const phone = document.getElementById('phone').value.trim();
+      const password = document.getElementById('password').value;
 
-      // Aquí se enviará la info al backend
-      fetch("https://ferreteriaexpress.shop/api/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      if (!name || !email || !phone || !password) {
+        Swal.fire({ icon:'warning', title:'Campos incompletos', text:'Completa todos los campos.' });
+        return false;
+      }
+
+      Swal.showLoading();
+
+      fetch('https://ferreteriaexpress.shop/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, phone, password })
       })
-      .then(res => res.json())
+      .then(r => r.json())
       .then(data => {
         if (data.success) {
-          alert("Registro exitoso. Ahora puedes iniciar sesión.");
-          window.location.href = "./login.html";
+          const username = data.usuario?.username || '(asignado)';
+          Swal.fire({
+            icon: 'success',
+            title: 'Cuenta creada',
+            html: `<p><strong>Usuario:</strong> <code>${username}</code></p><p>Ahora puedes iniciar sesión.</p>`,
+            confirmButtonText: 'Ir a Login',
+            confirmButtonColor: '#2196F3'
+          }).then(() => window.location.href = './login.html');
         } else {
-          alert("❌ Error en el registro: " + data.message);
+          Swal.fire({ icon:'error', title:'Error', text: data.message || 'No se pudo registrar.' });
         }
       })
-      .catch(err => alert("Error de conexión con el servidor."));
+      .catch(() => Swal.fire({ icon:'error', title:'Fallo de conexión', text:'Intenta más tarde.' }));
+      return false;
     }
   </script>
 </body>
