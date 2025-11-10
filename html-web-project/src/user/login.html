@@ -56,13 +56,11 @@
 
 
 <script>
-  // URL fija de API en producción (se usa para obtener el origen)
+  // URL fija de API en producción
   const API_URL = 'https://ferreteriaexpress.shop/api';
-  // El backend monta /login en la raíz (sin /api), así que construimos LOGIN_URL desde el origin
-  const LOGIN_URL = (() => {
-    try { return new URL(API_URL).origin + '/login'; }
-    catch { return 'https://ferreteriaexpress.shop/login'; }
-  })();
+  // Endpoint principal bajo /api y fallback a raíz, por si el proxy solo expone uno de ellos
+  const LOGIN_URL = API_URL.replace(/\/$/, '') + '/login';            // https://ferreteriaexpress.shop/api/login
+  const LOGIN_URL_FALLBACK = new URL(API_URL).origin + '/login';       // https://ferreteriaexpress.shop/login
 
   const form = document.getElementById("loginForm");
   const msg = document.getElementById("msg");
@@ -80,23 +78,39 @@
     }
 
     try {
-      const res = await fetch(LOGIN_URL, {
+      let res = await fetch(LOGIN_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ identifier, password }),
       });
 
-      const data = await res.json();
+      // Si el primero no existe, reintenta contra la ruta raíz
+      if (res.status === 404) {
+        res = await fetch(LOGIN_URL_FALLBACK, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ identifier, password }),
+        });
+      }
+
+      // Parseo seguro: si el servidor devuelve HTML (404), evita el error de JSON
+      const contentType = res.headers.get('content-type') || '';
+      let data;
+      if (contentType.includes('application/json')) {
+        data = await res.json();
+      } else {
+        const text = await res.text();
+        data = { mensaje: text };
+      }
 
       if (!res.ok) {
         msg.textContent = data.mensaje || "Error al iniciar sesión";
         Swal.fire({ icon: 'error', title: 'No pudiste iniciar sesión', text: data.mensaje || 'Verifica tus datos.' });
         return;
       }
-      localStorage.getItem("usuario")
 
 
-      // Guarda al usuario y redirige al inicio
+  // Guarda al usuario y redirige al inicio
       localStorage.setItem("usuario", JSON.stringify(data.usuario));
       const nombre = data.usuario?.nombre || '';
       const correo = data.usuario?.correo || '';
