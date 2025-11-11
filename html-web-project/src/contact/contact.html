@@ -207,10 +207,13 @@
   </footer>
 
   <script>
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
     function enviarMensaje(event) {
       event.preventDefault();
       const nombre = document.getElementById("nombre").value;
-      alert(`¡Gracias por contactarnos, ${nombre}! Te responderemos pronto.`);
+      Swal.fire({ icon: 'success', title: 'Mensaje enviado', text: `¡Gracias por contactarnos, ${nombre}! Te responderemos pronto.` });
       document.getElementById("formContacto").reset();
     }
   </script>

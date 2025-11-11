@@ -65,7 +65,58 @@
     </div>
   </main>
 
+  <!-- SweetAlert2 -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <!-- jsPDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
   <script>
+    function generarFacturaPDF(venta, items) {
+      try {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+        let y = 40;
+        doc.setFontSize(16);
+        doc.text(`Factura N° ${venta.id}`, 40, y);
+        y += 24;
+        doc.setFontSize(12);
+        doc.text(`Total: $${Number(venta.total).toLocaleString()}`, 40, y);
+        y += 20;
+        doc.text('----------------------------------------', 40, y); y += 16;
+        items.forEach(it => {
+          const line = `${it.nombre} x${it.cantidad}  $${Number(it.precio_unitario || it.precio).toLocaleString()}  Sub: $${(Number(it.precio_unitario || it.precio) * Number(it.cantidad)).toLocaleString()}`;
+          const split = doc.splitTextToSize(line, 500);
+          doc.text(split, 40, y);
+          y += 14 * (split.length);
+          if (y > 750) { doc.addPage(); y = 40; }
+        });
+        doc.save(`factura_${venta.id}.pdf`);
+      } catch (e) {
+        console.error('Error generando PDF', e);
+        const w = window.open('', '_blank');
+        const rows = (items||[]).map(i => `<tr><td>${i.nombre}</td><td>${i.cantidad}</td><td style="text-align:right">$${Number(i.precio_unitario||i.precio).toLocaleString()}</td></tr>`).join('');
+        const html = `<!doctype html><html><head><meta charset="utf-8"><title>Factura N° ${venta.id}</title></head><body><h3>Factura N° ${venta.id}</h3><table>${rows}</table><p>Total: $${Number(venta.total).toLocaleString()}</p><script>setTimeout(()=>window.print(),300);</script></body></html>`;
+        w.document.write(html); w.document.close();
+      }
+    }
+
+    function mostrarFacturaModal(venta, items) {
+      const rows = items.map(i => `<tr><td>${i.nombre}</td><td style="text-align:center">${i.cantidad}</td><td style="text-align:right">$${Number(i.precio).toLocaleString()}</td><td style="text-align:right">$${(Number(i.precio)*Number(i.cantidad)).toLocaleString()}</td></tr>`).join('');
+      const html = `
+        <div style="text-align:left">
+          <p><b>N° venta:</b> ${venta.id}</p>
+          <table style="width:100%;border-collapse:collapse;margin-top:8px">
+            <thead><tr><th>Producto</th><th>Cant.</th><th style="text-align:right">Precio</th><th style="text-align:right">Subtotal</th></tr></thead>
+            <tbody>${rows}</tbody>
+            <tfoot><tr><td colspan="3" style="text-align:right"><b>Total</b></td><td style="text-align:right"><b>$${Number(venta.total).toLocaleString()}</b></td></tr></tfoot>
+          </table>
+        </div>`;
+      Swal.fire({ title: 'Pedido confirmado', html, width:700, showCloseButton:true, showCancelButton:true, confirmButtonText:'Descargar factura', cancelButtonText:'Cerrar' }).then(res => {
+        if (res.isConfirmed) {
+          generarFacturaPDF(venta, items.map(i => ({ nombre: i.nombre, cantidad: i.cantidad, precio_unitario: i.precio_unitario || i.precio })));
+        }
+      });
+    }
     // ===== Config =====
     const API_URL = "https://ferreteriaexpress.shop/api";
 
@@ -155,7 +206,7 @@
     // ===== Checkout =====
     async function finalizarCompra() {
   const items = getCart();
-  if (!items.length) { alert("Tu carrito está vacío."); return; }
+  if (!items.length) { Swal.fire({ icon: 'info', title: 'Carrito vacío', text: 'Tu carrito está vacío.' }); return; }
 
   const user = JSON.parse(localStorage.getItem("usuario") || "null");
 
@@ -172,17 +223,18 @@
           body: JSON.stringify(payload)
         });
         const data = await r.json();
-        if (!r.ok || !data.ok) { alert(data.mensaje||"No se pudo confirmar"); return; }
+  if (!r.ok || !data.ok) { Swal.fire({ icon: 'error', title: 'Error', text: data.mensaje||"No se pudo confirmar" }); return; }
 
-        alert(`Pedido confirmado. N° venta: ${data.venta.id} — Total: $${fmt(data.venta.total)}`);
-        localStorage.removeItem("carrito");
-        localStorage.removeItem("cart");
-        localStorage.setItem("lastCheckout", String(Date.now()));
-        mostrarCarrito(); // queda vacío
+  // Mostrar modal con factura (usar detalle del servidor si está disponible)
+  mostrarFacturaModal(data.venta, data.venta.items || items);
+  localStorage.removeItem("carrito");
+  localStorage.removeItem("cart");
+  localStorage.setItem("lastCheckout", String(Date.now()));
+  mostrarCarrito(); // queda vacío
 
       } catch (e) {
         console.error(e);
-        alert("Error procesando el pedido.");
+        Swal.fire({ icon: 'error', title: 'Error', text: 'Error procesando el pedido.' });
       }
     }
 

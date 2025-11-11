@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (data.success) {
                     window.location.href = '/user/profile.html';
                 } else {
-                    alert(data.message);
+                    Swal.fire({ icon: 'error', title: 'Error', text: data.message });
                 }
             });
         });
@@ -35,10 +35,10 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    alert('Registration successful! Please log in.');
+                    Swal.fire({ icon: 'success', title: 'Registro', text: 'Registro exitoso. Por favor inicia sesión.' });
                     window.location.href = '/user/login.html';
                 } else {
-                    alert(data.message);
+                    Swal.fire({ icon: 'error', title: 'Error', text: data.message });
                 }
             });
         });
@@ -55,9 +55,9 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    alert('Profile updated successfully!');
+                    Swal.fire({ icon: 'success', title: 'Perfil', text: 'Perfil actualizado correctamente.' });
                 } else {
-                    alert(data.message);
+                    Swal.fire({ icon: 'error', title: 'Error', text: data.message });
                 }
             });
         });

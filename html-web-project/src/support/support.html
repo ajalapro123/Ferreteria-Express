@@ -213,12 +213,14 @@
     <p>&copy; 2025 Ferretería Express. Todos los derechos reservados.</p>
   </footer>
 
+  <!-- SweetAlert2 -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script>
     function enviarSoporte(event) {
       event.preventDefault();
       const nombre = document.getElementById("nombre").value;
       const categoria = document.getElementById("categoria").value;
-      alert(` Gracias ${nombre}, tu solicitud (${categoria}) fue enviada. Pronto te contactaremos.`);
+      Swal.fire({ icon: 'success', title: 'Solicitud enviada', text: `Gracias ${nombre}, tu solicitud (${categoria}) fue enviada. Pronto te contactaremos.` });
       document.getElementById("formSoporte").reset();
     }
   </script>

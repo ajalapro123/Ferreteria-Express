@@ -86,10 +86,57 @@ function renderCart() {
 /// --- checkout REAL: llama a /checkout y descuenta stock en BD ---
 import { API_URL } from "./config.js";
 
+// Helper para mostrar factura usando SweetAlert2 (usa window.Swal global)
+function mostrarFacturaModal(venta, items) {
+  const rows = items.map(i => `<tr><td>${i.nombre}</td><td style="text-align:center">${i.cantidad}</td><td style="text-align:right">$${Number(i.precio).toLocaleString()}</td><td style="text-align:right">$${(Number(i.precio)*Number(i.cantidad)).toLocaleString()}</td></tr>`).join('');
+  const html = `
+    <div style="text-align:left">
+      <p><b>N° venta:</b> ${venta.id}</p>
+      <table style="width:100%;border-collapse:collapse;margin-top:8px">
+        <thead><tr><th>Producto</th><th>Cant.</th><th style="text-align:right">Precio</th><th style="text-align:right">Subtotal</th></tr></thead>
+        <tbody>${rows}</tbody>
+        <tfoot><tr><td colspan="3" style="text-align:right"><b>Total</b></td><td style="text-align:right"><b>$${Number(venta.total).toLocaleString()}</b></td></tr></tfoot>
+      </table>
+    </div>`;
+
+  Swal.fire({ title: 'Pedido confirmado', html, width:700, showCloseButton:true, showCancelButton:true, confirmButtonText:'Descargar factura', cancelButtonText:'Cerrar' })
+    .then(res => {
+      if (res.isConfirmed) {
+        // generar PDF si jsPDF está disponible
+        if (window.jspdf && window.jspdf.jsPDF) {
+          const { jsPDF } = window.jspdf;
+          try {
+            const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+            let y = 40;
+            doc.setFontSize(16);
+            doc.text(`Factura N° ${venta.id}`, 40, y);
+            y += 24;
+            doc.setFontSize(12);
+            doc.text(`Total: $${Number(venta.total).toLocaleString()}`, 40, y);
+            y += 20;
+            items.forEach(it => {
+              const line = `${it.nombre} x${it.cantidad}  $${Number(it.precio || it.precio_unitario).toLocaleString()}  Sub: $${(Number(it.precio || it.precio_unitario) * Number(it.cantidad)).toLocaleString()}`;
+              const split = doc.splitTextToSize(line, 500);
+              doc.text(split, 40, y);
+              y += 14 * (split.length);
+              if (y > 750) { doc.addPage(); y = 40; }
+            });
+            doc.save(`factura_${venta.id}.pdf`);
+          } catch (e) {
+            console.error('Error generando PDF', e);
+            const w = window.open('', '_blank'); w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Factura N° ${venta.id}</title></head><body>${html}</body></html>`); w.document.close();
+          }
+        } else {
+          const w = window.open('', '_blank'); w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Factura N° ${venta.id}</title></head><body>${html}</body></html>`); w.document.close();
+        }
+      }
+    });
+}
+
 async function checkout() {
   const items = getCart();
   if (!items.length) {
-    alert("¡Tu carrito está vacío!");
+    Swal.fire({ icon: 'info', title: 'Carrito vacío', text: '¡Tu carrito está vacío!' });
     return;
   }
 
@@ -112,12 +159,12 @@ async function checkout() {
 
     const data = await resp.json();
     if (!resp.ok || !data.ok) {
-      alert(data.mensaje || "No se pudo confirmar el pedido");
+      Swal.fire({ icon: 'error', title: 'Error', text: data.mensaje || "No se pudo confirmar el pedido" });
       return;
     }
 
-    // Éxito: se registró la venta y se descontó el stock en la BD
-    alert(`Pedido confirmado. N° venta: ${data.venta.id} — Total: $${fmt(data.venta.total)}`);
+  // Éxito: mostrar factura/venta (usar detalle del servidor si está disponible)
+  mostrarFacturaModal(data.venta, data.venta.items || items);
 
     // Vacía carrito y repinta
     setCart([]);
@@ -128,7 +175,7 @@ async function checkout() {
 
   } catch (e) {
     console.error("checkout error", e);
-    alert("Error procesando el pedido. Intenta de nuevo.");
+    Swal.fire({ icon: 'error', title: 'Error', text: 'Error procesando el pedido. Intenta de nuevo.' });
   }
 }
 

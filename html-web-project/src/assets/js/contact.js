@@ -23,18 +23,18 @@ document.addEventListener("DOMContentLoaded", function() {
             })
             .then(response => {
                 if (response.ok) {
-                    alert("Your message has been sent successfully!");
+                    Swal.fire({ icon: 'success', title: 'Enviado', text: 'Tu mensaje ha sido enviado correctamente.' });
                     contactForm.reset();
                 } else {
-                    alert("There was an error sending your message. Please try again.");
+                    Swal.fire({ icon: 'error', title: 'Error', text: 'Hubo un error al enviar tu mensaje. Intenta de nuevo.' });
                 }
             })
             .catch(error => {
                 console.error("Error:", error);
-                alert("There was an error sending your message. Please try again.");
+                Swal.fire({ icon: 'error', title: 'Error', text: 'Hubo un error al enviar tu mensaje. Intenta de nuevo.' });
             });
         } else {
-            alert("Please fill in all fields correctly.");
+            Swal.fire({ icon: 'warning', title: 'Formulario incompleto', text: 'Por favor completa todos los campos correctamente.' });
         }
     });
 
