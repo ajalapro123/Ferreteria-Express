@@ -158,7 +158,66 @@
   // ✅ Carrito
   // ============================================
   function toggleCarrito() {
-    document.getElementById("carrito").classList.toggle("abierto");
+    const panel = document.getElementById("carrito");
+    panel.classList.toggle("abierto");
+    const abierto = panel.classList.contains("abierto");
+    panel.setAttribute("aria-hidden", abierto ? "false" : "true");
+  }
+
+  // ============================================
+  // ✅ Modal de factura (compartido con cart)
+  // ============================================
+  function mostrarFacturaModal(venta, items) {
+    const rows = (items || []).map(i => `
+      <tr>
+        <td>${i.nombre}</td>
+        <td style="text-align:center">${Number(i.cantidad)}</td>
+        <td style="text-align:right">$${Number(i.precio || i.precio_unitario).toLocaleString()}</td>
+        <td style="text-align:right">$${(Number(i.precio || i.precio_unitario) * Number(i.cantidad)).toLocaleString()}</td>
+      </tr>`).join('');
+
+    const html = `
+      <div style="text-align:left">
+        <p><b>N° venta:</b> ${venta?.id ?? '-'}</p>
+        <table style="width:100%;border-collapse:collapse;margin-top:8px">
+          <thead><tr><th>Producto</th><th>Cant.</th><th style=\"text-align:right\">Precio</th><th style=\"text-align:right\">Subtotal</th></tr></thead>
+          <tbody>${rows}</tbody>
+          <tfoot><tr><td colspan="3" style="text-align:right"><b>Total</b></td><td style="text-align:right"><b>$${Number(venta?.total || 0).toLocaleString()}</b></td></tr></tfoot>
+        </table>
+      </div>`;
+
+    Swal.fire({ title: 'Pedido confirmado', html, width:700, showCloseButton:true, showCancelButton:true, confirmButtonText:'Descargar factura', cancelButtonText:'Cerrar' })
+      .then(res => {
+        if (res.isConfirmed) {
+          if (window.jspdf && window.jspdf.jsPDF) {
+            const { jsPDF } = window.jspdf;
+            try {
+              const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+              let y = 40;
+              doc.setFontSize(16);
+              doc.text(`Factura N° ${venta?.id ?? '-'}`, 40, y);
+              y += 24;
+              doc.setFontSize(12);
+              doc.text(`Total: $${Number(venta?.total || 0).toLocaleString()}`, 40, y);
+              y += 20;
+              (items || []).forEach(it => {
+                const precio = Number(it.precio || it.precio_unitario || 0);
+                const cant = Number(it.cantidad || 0);
+                const line = `${it.nombre} x${cant}  $${precio.toLocaleString()}  Sub: $${(precio*cant).toLocaleString()}`;
+                const split = doc.splitTextToSize(line, 500);
+                doc.text(split, 40, y);
+                y += 14 * (split.length);
+                if (y > 750) { doc.addPage(); y = 40; }
+              });
+              doc.save(`factura_${venta?.id ?? 'venta'}.pdf`);
+            } catch (e) {
+              const w = window.open('', '_blank'); w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Factura</title></head><body>${html}</body></html>`); w.document.close();
+            }
+          } else {
+            const w = window.open('', '_blank'); w.document.write(`<!doctype html><html><head><meta charset=\"utf-8\"><title>Factura</title></head><body>${html}</body></html>`); w.document.close();
+          }
+        }
+      });
   }
 
   function actualizarCarrito() {
