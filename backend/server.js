@@ -25,6 +25,7 @@ const usuariosRoutes = require('./routes/usuarios');
 const ventasRoutes = require('./routes/ventas');
 const soporteRoutes = require('./routes/soporte');
 const authRoutes = require('./routes/auth');
+const checkoutRoutes = require('./routes/checkout');
 
 // Ruta de prueba para ver si la API responde
 app.get('/', (req, res) => {
@@ -59,6 +60,10 @@ app.use('/proveedores', proveedoresRoutes);
 app.use('/usuarios', usuariosRoutes);
 app.use('/ventas', ventasRoutes);
 app.use('/soporte', soporteRoutes);
+app.use('/checkout', checkoutRoutes);
+// Soporta frontend que llama a /api/checkout (p. ej. API_URL = 'https://ferreteriaexpress.shop/api')
+app.use('/api/checkout', checkoutRoutes);
+console.log('📦 Ruta /checkout y /api/checkout montadas');
 // Rutas de autenticación (ej: POST /login)
 app.use('/', authRoutes);
 
