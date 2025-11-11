@@ -62,6 +62,18 @@
     <div id="productos" class="productos-grid"></div>
   </main>
 
+  <!-- Panel lateral del carrito (faltaba en este HTML) -->
+  <aside id="carrito" class="carrito" aria-hidden="true">
+    <button class="btn-cerrar" onclick="toggleCarrito()" aria-label="Cerrar carrito">×</button>
+    <h2>Tu carrito</h2>
+    <div id="carrito-items"></div>
+    <div class="carrito-footer">
+      <p id="carrito-total">Total: $0</p>
+      <button class="btn-finalizar">Finalizar pedido</button>
+      <button class="btn-ver-carrito" onclick="irAlCarrito()">Ver carrito</button>
+    </div>
+  </aside>
+
   <!-- SweetAlert -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
@@ -152,6 +164,12 @@
   function actualizarCarrito() {
     const cont = document.getElementById("carrito-items");
     const totalEl = document.getElementById("carrito-total");
+
+    // Si el panel no existe (por alguna razón), solo sincroniza LS y sal.
+    if (!cont || !totalEl) {
+      setCartLS(carrito);
+      return;
+    }
 
     cont.innerHTML = "";
     let total = 0;
