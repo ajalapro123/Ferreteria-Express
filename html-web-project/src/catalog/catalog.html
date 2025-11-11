@@ -61,92 +61,19 @@
     <h2 style="text-align:center; margin-top:20px;">Productos destacados</h2>
     <div id="productos" class="productos-grid"></div>
   </main>
-    <!-- SweetAlert2 -->
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <!-- jsPDF para generar factura en PDF -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
-    <script>
-    // Generador simple de PDF usando jsPDF (formato texto)
-    function generarFacturaPDF(venta, items) {
-      try {
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF({ unit: 'pt', format: 'a4' });
-        let y = 40;
-        doc.setFontSize(16);
-        doc.text(`Factura N° ${venta.id}`, 40, y);
-        y += 24;
-        doc.setFontSize(12);
-        doc.text(`Total: $${Number(venta.total).toLocaleString()}`, 40, y);
-        y += 20;
-        doc.text('----------------------------------------', 40, y); y += 16;
-        items.forEach(it => {
-          const line = `${it.nombre} x${it.cantidad}  $${Number(it.precio_unitario || it.precio).toLocaleString()}  Sub: $${(Number(it.precio_unitario || it.precio) * Number(it.cantidad)).toLocaleString()}`;
-          const split = doc.splitTextToSize(line, 500);
-          doc.text(split, 40, y);
-          y += 14 * (split.length);
-          if (y > 750) { doc.addPage(); y = 40; }
-        });
-        doc.save(`factura_${venta.id}.pdf`);
-      } catch (e) {
-        console.error('Error generando PDF', e);
-        // fallback: abrir ventana de impresión
-        const w = window.open('', '_blank');
-        const rows = (items||[]).map(i => `<tr><td>${i.nombre}</td><td>${i.cantidad}</td><td style="text-align:right">$${Number(i.precio_unitario||i.precio).toLocaleString()}</td></tr>`).join('');
-        const html = `<!doctype html><html><head><meta charset="utf-8"><title>Factura N° ${venta.id}</title></head><body><h3>Factura N° ${venta.id}</h3><table>${rows}</table><p>Total: $${Number(venta.total).toLocaleString()}</p><script>setTimeout(()=>window.print(),300);</script></body></html>`;
-        w.document.write(html); w.document.close();
-      }
-    }
+  <!-- SweetAlert -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-      // Helper para mostrar la ventana de factura/venta
-      function mostrarFacturaModal(venta, items) {
-        const rows = items.map(i => `<tr><td>${i.nombre}</td><td style="text-align:center">${i.cantidad}</td><td style="text-align:right">$${Number(i.precio).toLocaleString()}</td><td style="text-align:right">$${(Number(i.precio)*Number(i.cantidad)).toLocaleString()}</td></tr>`).join('');
-        const html = `
-          <div style="text-align:left">
-            <p><b>N° venta:</b> ${venta.id}</p>
-            <table style="width:100%;border-collapse:collapse;margin-top:8px">
-              <thead><tr><th>Producto</th><th>Cant.</th><th style="text-align:right">Precio</th><th style="text-align:right">Subtotal</th></tr></thead>
-              <tbody>${rows}</tbody>
-              <tfoot><tr><td colspan="3" style="text-align:right"><b>Total</b></td><td style="text-align:right"><b>$${Number(venta.total).toLocaleString()}</b></td></tr></tfoot>
-            </table>
-          </div>`;
+  <!-- jsPDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
-        Swal.fire({
-          title: 'Pedido confirmado',
-          html,
-          width: 700,
-          showCloseButton: true,
-          showCancelButton: true,
-          confirmButtonText: 'Descargar factura',
-          cancelButtonText: 'Cerrar'
-        }).then((res) => {
-          if (res.isConfirmed) {
-            // preferimos generar PDF
-            generarFacturaPDF(venta, items.map(i => ({ nombre: i.nombre, cantidad: i.cantidad, precio_unitario: i.precio_unitario || i.precio })));
-          }
-        });
-      }
-    }
-  </script>
-
-  <!-- Carrito lateral -->
-  <div id="carrito" class="carrito">
-    <button class="btn-cerrar" onclick="toggleCarrito()">✖</button>
-    <h2>Carrito</h2>
-    <div id="carrito-items"></div>
-    <div class="carrito-footer">
-      <p id="carrito-total">Total: $0</p>
-      <button class="btn-finalizar">Finalizar pedido</button>
-      <button class="btn-ver-carrito" onclick="irAlCarrito()">Ver carrito</button>
-    </div>
-  </div>
-  
   <script>
-  // === Config ===
-  // API del backend
+  // ============================================
+  // ✅ CONFIG
+  // ============================================
   const API_URL = "https://ferreteriaexpress.shop/api";
 
-  // Origen del backend para construir rutas estáticas (https, sin /api)
   const BACKEND_ORIGIN = (() => {
     try { return new URL(API_URL).origin; }
     catch { return "https://ferreteriaexpress.shop"; }
@@ -155,106 +82,125 @@
   let carrito = [];
   let productosCache = [];
 
-  function getCartLS(){ return JSON.parse(localStorage.getItem("carrito")||"[]"); }
-  function setCartLS(v){
+  function getCartLS() { 
+    return JSON.parse(localStorage.getItem("carrito") || "[]");
+  }
+
+  function setCartLS(v) {
     localStorage.setItem("carrito", JSON.stringify(v));
     localStorage.setItem("cart", JSON.stringify(v));
   }
 
-  // ---- RESOLVER URL de imagen (corregido) ----
-  // 1) Siempre construimos desde el backend real (https) + /assets/img/productos + nombre en BD
-  // 2) Si no hay 'imagen', mostramos placeholder SVG
-  function srcDeProducto(p){
+  // ============================================
+  // ✅ Imagen de productos
+  // ============================================
+  function srcDeProducto(p) {
     if (p && p.imagen) {
-      const clean = String(p.imagen).replace(/^\/+/, ""); // quitar / inicial si lo tuviera
+      const clean = String(p.imagen).replace(/^\/+/, "");
       return `${BACKEND_ORIGIN}/assets/img/productos/${clean}`;
     }
-    // placeholder si no hay nombre
     return 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="200"><rect width="100%" height="100%" fill="%23e0e0e0"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%23666" font-family="Arial" font-size="20">Sin imagen</text></svg>';
   }
 
-  // ----- Cargar y pintar catálogo -----
-  async function cargarProductos(){
+  // ============================================
+  // ✅ Cargar productos
+  // ============================================
+  async function cargarProductos() {
     const cont = document.getElementById("productos");
+
     try {
       const res = await fetch(`${API_URL}/productos`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      productosCache = await res.json();
 
+      productosCache = await res.json();
       cont.innerHTML = "";
+
       if (!Array.isArray(productosCache) || !productosCache.length) {
-        cont.innerHTML = "<p>No hay productos para mostrar.</p>";
+        cont.innerHTML = "<p>No hay productos disponibles.</p>";
         return;
       }
 
       productosCache.forEach(p => {
-        const agotado = Number(p.cantidad||0) <= 0;
+        const agotado = Number(p.cantidad || 0) <= 0;
         const imgSrc = srcDeProducto(p);
+
         cont.innerHTML += `
-          <div class="producto-card" data-id="${p.id}">
-            <img src="${imgSrc}" alt="${p.nombre}" class="producto-img"
-              onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=&quot;http://www.w3.org/2000/svg&quot; width=&quot;300&quot; height=&quot;200&quot;><rect width=&quot;100%&quot; height=&quot;100%&quot; fill=&quot;%23e0e0e0&quot;/><text x=&quot;50%&quot; y=&quot;50%&quot; dominant-baseline=&quot;middle&quot; text-anchor=&quot;middle&quot; fill=&quot;%23666&quot; font-family=&quot;Arial&quot; font-size=&quot;20&quot;>Sin imagen</text></svg>'">
-            <h3>${p.nombre}</h3>
-            <p><b>Precio:</b> $${Number(p.precio).toLocaleString()}</p>
-            <p><b>Stock:</b> <span class="stock">${p.cantidad}</span></p>
-            <button class="btn-comprar" ${agotado?"disabled":""}
-              onclick="agregarAlCarritoPorId(${p.id})">${agotado?"Agotado":"Añadir al carrito"}</button>
-          </div>`;
-      });
-    } catch (err) {
-      console.error("Error cargando productos:", err);
-      cont.innerHTML = `
-        <div style="padding:12px;background:#fff3cd;border:1px solid #ffeeba;border-radius:6px">
-          <b>No se pudieron cargar los productos.</b><br>
-          Detalle: ${String(err.message || err)}
+        <div class="producto-card">
+          <img src="${imgSrc}" class="producto-img">
+          <h3>${p.nombre}</h3>
+          <p><b>Precio:</b> $${Number(p.precio).toLocaleString()}</p>
+          <p><b>Stock:</b> ${p.cantidad}</p>
+          <button class="btn-comprar" ${agotado ? "disabled" : ""}
+            onclick="agregarAlCarritoPorId(${p.id})">
+            ${agotado ? "Agotado" : "Añadir al carrito"}
+          </button>
         </div>`;
+      });
+
+    } catch (err) {
+      cont.innerHTML = `<p>Error cargando productos: ${String(err)}</p>`;
     }
   }
 
-  // ----- Carrito lateral -----
-  function toggleCarrito(){ document.getElementById("carrito").classList.toggle("abierto"); }
+  // ============================================
+  // ✅ Carrito
+  // ============================================
+  function toggleCarrito() {
+    document.getElementById("carrito").classList.toggle("abierto");
+  }
 
-  function actualizarCarrito(){
+  function actualizarCarrito() {
     const cont = document.getElementById("carrito-items");
     const totalEl = document.getElementById("carrito-total");
+
     cont.innerHTML = "";
     let total = 0;
+
     carrito.forEach((it, i) => {
       total += it.precio * it.cantidad;
+
       cont.innerHTML += `
-        <div class="carrito-item">
-          <span>${it.nombre} - $${it.precio.toLocaleString()} x ${it.cantidad}</span>
-          <button onclick="removerDelCarrito(${i})">Eliminar</button>
-        </div>`;
+      <div class="carrito-item">
+        <span>${it.nombre} - $${it.precio.toLocaleString()} x ${it.cantidad}</span>
+        <button onclick="removerDelCarrito(${i})">Eliminar</button>
+      </div>`;
     });
+
     totalEl.textContent = "Total: $" + total.toLocaleString();
     setCartLS(carrito);
   }
 
-  window.removerDelCarrito = function(i){ carrito.splice(i,1); actualizarCarrito(); }
+  window.removerDelCarrito = function(i) {
+    carrito.splice(i, 1);
+    actualizarCarrito();
+  };
 
-  // Evita superar el stock que muestra el catálogo
-  window.agregarAlCarritoPorId = function(id){
+  window.agregarAlCarritoPorId = function(id) {
     const p = productosCache.find(x => x.id === id);
     if (!p) return;
 
     const enCarrito = carrito.find(x => x.id === id)?.cantidad || 0;
-    const disponible = Number(p.cantidad || 0);
+    const disponible = Number(p.cantidad);
+
     if (enCarrito + 1 > disponible) {
-      Swal.fire({ icon: 'warning', title: 'Stock insuficiente', text: `No hay suficiente stock de "${p.nombre}".` });
+      Swal.fire({
+        icon: "warning",
+        title: "Stock insuficiente",
+        text: `No hay suficiente stock de "${p.nombre}".`
+      });
       return;
     }
 
     const ex = carrito.find(x => x.id === id);
     if (ex) {
-      ex.cantidad += 1;
+      ex.cantidad++;
     } else {
       carrito.push({
         id: p.id,
         nombre: p.nombre,
         precio: Number(p.precio),
         cantidad: 1,
-        imagen: srcDeProducto(p) // URL válida para cart.html
+        imagen: srcDeProducto(p)
       });
     }
 
@@ -262,58 +208,73 @@
     toggleCarrito();
   };
 
-  window.irAlCarrito = function(){
+  window.irAlCarrito = function() {
     setCartLS(carrito);
     location.href = "../cart/cart.html";
   };
 
+  // ============================================
+  // ✅ FINALIZAR PEDIDO — (BLOQUE CORREGIDO)
+  // ============================================
   document.addEventListener("DOMContentLoaded", () => {
     const btnFinal = document.querySelector(".btn-finalizar");
     if (btnFinal) btnFinal.addEventListener("click", finalizarDesdeCatalogo);
   });
 
-  async function finalizarDesdeCatalogo(){
-    if (!carrito.length){ Swal.fire({ icon: 'info', title: 'Carrito vacío', text: 'Tu carrito está vacío.' }); return; }
+  async function finalizarDesdeCatalogo() {
+    if (!carrito.length) {
+      Swal.fire({
+        icon: "info",
+        title: "Carrito vacío",
+        text: "Tu carrito está vacío."
+      });
+      return;
+    }
 
     const user = JSON.parse(localStorage.getItem("usuario") || "null");
 
     const payload = {
       clienteId: user?.id ?? null,
       metodoPago: "Efectivo",
-      items: carrito.map(x => ({ id:x.id, cantidad:x.cantidad }))
-    };
+      items: carrito.map(x => ({
+        id: x.id,
+        cantidad: x.cantidad
+      }))
+    }; // ✅ CERRADO CORRECTAMENTE
 
-    try{
+    try {
       const r = await fetch(`${API_URL}/checkout`, {
-        method:"POST",
-        headers:{ "Content-Type":"application/json" },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
+
       const data = await r.json();
 
-      if (!r.ok || !data.ok){
-        Swal.fire({ icon: 'error', title: 'Error', text: data.mensaje || "No se pudo confirmar el pedido" });
+      if (!r.ok || !data.ok) {
+        Swal.fire({
+          icon: "error",
+          title: "Error",
+          text: data.mensaje || "No se pudo confirmar el pedido"
+        });
         return;
       }
 
-  // Mostrar modal con factura/venta (preferir detalle del servidor si viene)
-  mostrarFacturaModal(data.venta, data.venta.items || carrito);
+      mostrarFacturaModal(data.venta, data.venta.items || carrito);
 
       carrito = [];
       actualizarCarrito();
-
-      localStorage.setItem("lastCheckout", String(Date.now()));
+      localStorage.setItem("lastCheckout", Date.now());
       await cargarProductos();
 
-    }catch(err){
-      console.error(err);
-      Swal.fire({ icon: 'error', title: 'Error', text: 'Error procesando el pedido.' });
+    } catch (err) {
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Error procesando el pedido."
+      });
     }
   }
-
-  window.addEventListener("storage", (e) => {
-    if (e.key === "lastCheckout" && e.newValue) cargarProductos();
-  });
 
   carrito = getCartLS();
   actualizarCarrito();
