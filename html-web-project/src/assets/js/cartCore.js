@@ -169,5 +169,7 @@
   window.fmt = fmt;
   window.normalizarImagen = normalizarImagen;
   window.BACKEND_ORIGIN = BACKEND_ORIGIN;
+  // Exponer también API_URL para compatibilidad con scripts antiguos
+  if (!window.API_URL) window.API_URL = API_URL;
   window.mostrarFacturaModal = mostrarFacturaModal;
 })();

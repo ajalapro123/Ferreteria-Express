@@ -79,8 +79,8 @@
 
   <!-- jsPDF -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <!-- Módulo común del carrito (helpers + factura) -->
-  <script type="module" src="../assets/js/cartCore.js"></script>
+  <!-- Script común del carrito (helpers + factura) cargado antes para disponer de globals) -->
+  <script src="../assets/js/cartCore.js"></script>
 
   <script>
   // usar implementación compartida en cartCore.js -> window.mostrarFacturaModal
@@ -218,9 +218,18 @@
     }
   }
 
-  carrito = getCartLS();
-  actualizarCarrito();
-  cargarProductos();
+  // Inicialización diferida para asegurar que cartCore haya cargado
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof getCartLS === 'function') {
+      carrito = getCartLS();
+    } else {
+      carrito = [];
+    }
+    actualizarCarrito();
+    if (typeof cargarProductos === 'function') {
+      cargarProductos();
+    }
+  });
   </script>
 </body>
 </html>
