@@ -85,6 +85,60 @@
   <script>
   // usar implementación compartida en cartCore.js -> window.mostrarFacturaModal
 
+  // =============================
+  // Estado y helpers catálogo
+  // =============================
+  let productosCache = [];
+  let carrito = [];
+
+  function toggleCarrito() {
+    const panel = document.getElementById("carrito");
+    if (!panel) return;
+    panel.classList.toggle("abierto");
+    const abierto = panel.classList.contains("abierto");
+    panel.setAttribute("aria-hidden", abierto ? "false" : "true");
+  }
+
+  function srcDeProducto(p){
+    if (window.normalizarImagen) return window.normalizarImagen(p?.imagen || p?.imagenUrl || p?.ruta_imagen || "");
+    const raw = p?.imagen || p?.imagenUrl || p?.ruta_imagen || "";
+    if (!raw) return "";
+    if (/^https?:\/\//i.test(raw)) return raw;
+    if (raw.startsWith("/")) return (window.BACKEND_ORIGIN || "") + raw;
+    return (window.BACKEND_ORIGIN || "") + "/assets/img/productos/" + raw.replace(/^\/+/, "");
+  }
+
+  function pintarProductos(lista){
+    const cont = document.getElementById("productos");
+    if (!cont) return;
+    cont.innerHTML = "";
+    lista.forEach(p => {
+      const img = srcDeProducto(p);
+      const div = document.createElement("div");
+      div.className = "producto-card";
+      div.innerHTML = `
+        ${img ? `<img class="producto-img" src="${img}" alt="${p.nombre}" onerror="this.style.display='none'">` : ""}
+        <h3>${p.nombre}</h3>
+        <p>Precio: $${Number(p.precio).toLocaleString()}</p>
+        <p>Stock: ${p.cantidad ?? p.stock ?? '-'}</p>
+        <button class=\"btn-comprar\" onclick=\"agregarAlCarritoPorId(${p.id})\">Agregar</button>
+      `;
+      cont.appendChild(div);
+    });
+  }
+
+  async function cargarProductos(){
+    try {
+      const resp = await fetch(`${API_URL}/productos`);
+      const data = await resp.json();
+      if (Array.isArray(data)) productosCache = data; else if (Array.isArray(data.productos)) productosCache = data.productos; else productosCache = [];
+      pintarProductos(productosCache);
+    } catch(err){
+      console.error("Error cargando productos", err);
+      pintarProductos([]);
+    }
+  }
+
   function actualizarCarrito() {
     const cont = document.getElementById("carrito-items");
     const totalEl = document.getElementById("carrito-total");
