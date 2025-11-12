@@ -73,6 +73,8 @@
   <!-- Módulo común del carrito -->
   <script type="module" src="../assets/js/cartCore.js"></script>
   <script>
+  // ===== Modal de Factura (mismo formato que el catálogo) =====
+  // usar implementación compartida en cartCore.js -> window.mostrarFacturaModal
 
   // ✅ MOSTRAR CARRITO
   function mostrarCarrito() {
@@ -181,6 +183,7 @@
       const data = await r.json();
 
       if (!r.ok || !data.ok) {
+        console.error('Checkout error', r.status, data);
         Swal.fire({
           icon: 'error',
           title: 'Error',
@@ -198,6 +201,7 @@
       mostrarCarrito();
 
     } catch (err) {
+      console.error('checkout exception', err);
       Swal.fire({
         icon: 'error',
         title: 'Error',
