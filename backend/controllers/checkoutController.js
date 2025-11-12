@@ -3,7 +3,7 @@ const { pool } = require('../config/database');
 const checkoutController = {
   async checkout(req, res) {
     try {
-      const { clienteId = null, metodoPago, items } = req.body;
+  const { clienteId = null, metodoPago, items } = req.body;
       if (!Array.isArray(items) || items.length === 0) {
         return res.status(400).json({ ok: false, mensaje: 'Carrito vacío' });
       }
@@ -24,6 +24,15 @@ const checkoutController = {
           total += Number(producto.precio) * Number(it.cantidad);
         }
 
+        // Obtener datos del cliente (opcional)
+        let clienteDatos = null;
+        if (clienteId) {
+          const [cliRows] = await conn.query('SELECT id, nombre, correo, telefono, direccion FROM clientes WHERE id = ?', [clienteId]);
+          if (cliRows && cliRows.length) {
+            clienteDatos = cliRows[0];
+          }
+        }
+
         // Insertar venta
         const estado = 'confirmado';
         const [rVenta] = await conn.query('INSERT INTO ventas (cliente_id, total, estado) VALUES (?, ?, ?)', [clienteId, total, estado]);
@@ -41,7 +50,7 @@ const checkoutController = {
         }
 
         await conn.commit();
-        return res.json({ ok: true, venta: { id: ventaId, total, items: ventaItems } });
+  return res.json({ ok: true, venta: { id: ventaId, total, metodoPago, cliente: clienteDatos, items: ventaItems, fecha: new Date().toISOString() } });
       } catch (err) {
         await conn.rollback();
         console.error('Error en checkout transaction:', err);

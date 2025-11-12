@@ -88,18 +88,62 @@ import { API_URL } from "./config.js";
 
 // Helper para mostrar factura usando SweetAlert2 (usa window.Swal global)
 function mostrarFacturaModal(venta, items) {
-  const rows = items.map(i => `<tr><td>${i.nombre}</td><td style="text-align:center">${i.cantidad}</td><td style="text-align:right">$${Number(i.precio).toLocaleString()}</td><td style="text-align:right">$${(Number(i.precio)*Number(i.cantidad)).toLocaleString()}</td></tr>`).join('');
+  const cliente = venta?.cliente || JSON.parse(localStorage.getItem('usuario')||'null') || {};
+  const nombreCliente = cliente?.nombre || 'Consumidor final';
+  const correoCliente = cliente?.correo || '';
+  const metodoPago = venta?.metodoPago || 'Efectivo';
+  const fecha = venta?.fecha ? new Date(venta.fecha) : new Date();
+
+  const rows = (items||[]).map(i => {
+    const precio = Number(i.precio || i.precio_unitario);
+    const cant = Number(i.cantidad);
+    return `<tr>
+      <td>${i.nombre}</td>
+      <td style="text-align:center">${cant}</td>
+      <td style="text-align:right">$${(precio).toLocaleString()}</td>
+      <td style="text-align:right">$${(precio*cant).toLocaleString()}</td>
+    </tr>`;}).join('');
+
   const html = `
-    <div style="text-align:left">
-      <p><b>N° venta:</b> ${venta.id}</p>
+    <div style="text-align:left;font-family:Arial,sans-serif">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div>
+          <div style="font-size:20px;font-weight:700">Ferretería Express</div>
+          <div style="color:#555">NIT 900.000.000-1</div>
+          <div style="color:#555">https://ferreteriaexpress.shop</div>
+        </div>
+        <div style="text-align:right">
+          <div><b>Factura N°</b> ${venta?.id ?? '-'}</div>
+          <div><b>Fecha:</b> ${fecha.toLocaleString()}</div>
+        </div>
+      </div>
+
+      <div style="background:#f7f7f7;border:1px solid #eee;padding:10px;border-radius:8px;margin-bottom:12px">
+        <div><b>Cliente:</b> ${nombreCliente}</div>
+        ${correoCliente ? `<div><b>Correo:</b> ${correoCliente}</div>` : ''}
+        <div><b>Método de pago:</b> ${metodoPago}</div>
+      </div>
+
       <table style="width:100%;border-collapse:collapse;margin-top:8px">
-        <thead><tr><th>Producto</th><th>Cant.</th><th style="text-align:right">Precio</th><th style="text-align:right">Subtotal</th></tr></thead>
+        <thead>
+          <tr>
+            <th style="border-bottom:2px solid #ddd;text-align:left;padding:6px 4px">Producto</th>
+            <th style="border-bottom:2px solid #ddd;text-align:center;padding:6px 4px">Cant.</th>
+            <th style="border-bottom:2px solid #ddd;text-align:right;padding:6px 4px">Precio</th>
+            <th style="border-bottom:2px solid #ddd;text-align:right;padding:6px 4px">Subtotal</th>
+          </tr>
+        </thead>
         <tbody>${rows}</tbody>
-        <tfoot><tr><td colspan="3" style="text-align:right"><b>Total</b></td><td style="text-align:right"><b>$${Number(venta.total).toLocaleString()}</b></td></tr></tfoot>
+        <tfoot>
+          <tr>
+            <td colspan="3" style="text-align:right;padding:8px 4px"><b>Total</b></td>
+            <td style="text-align:right;padding:8px 4px"><b>$${Number(venta?.total||0).toLocaleString()}</b></td>
+          </tr>
+        </tfoot>
       </table>
     </div>`;
 
-  Swal.fire({ title: 'Pedido confirmado', html, width:700, showCloseButton:true, showCancelButton:true, confirmButtonText:'Descargar factura', cancelButtonText:'Cerrar' })
+  Swal.fire({ title: 'Pedido confirmado', html, width:760, showCloseButton:true, showCancelButton:true, confirmButtonText:'Descargar factura', cancelButtonText:'Cerrar' })
     .then(res => {
       if (res.isConfirmed) {
         // generar PDF si jsPDF está disponible
@@ -108,26 +152,56 @@ function mostrarFacturaModal(venta, items) {
           try {
             const doc = new jsPDF({ unit: 'pt', format: 'a4' });
             let y = 40;
-            doc.setFontSize(16);
-            doc.text(`Factura N° ${venta.id}`, 40, y);
+            doc.setFontSize(18);
+            doc.text('Ferretería Express', 40, y); y += 18;
+            doc.setFontSize(10);
+            doc.text('NIT 900.000.000-1', 40, y); y += 14;
+            doc.text('https://ferreteriaexpress.shop', 40, y); y += 20;
+            doc.setFontSize(14);
+            doc.text(`Factura N° ${venta?.id ?? '-'}`, 40, y);
+            doc.text(`Fecha: ${fecha.toLocaleString()}`, 300, y);
             y += 24;
+
+            // Cliente
             doc.setFontSize(12);
-            doc.text(`Total: $${Number(venta.total).toLocaleString()}`, 40, y);
-            y += 20;
-            items.forEach(it => {
-              const line = `${it.nombre} x${it.cantidad}  $${Number(it.precio || it.precio_unitario).toLocaleString()}  Sub: $${(Number(it.precio || it.precio_unitario) * Number(it.cantidad)).toLocaleString()}`;
-              const split = doc.splitTextToSize(line, 500);
-              doc.text(split, 40, y);
-              y += 14 * (split.length);
-              if (y > 750) { doc.addPage(); y = 40; }
+            doc.text(`Cliente: ${nombreCliente}`, 40, y); y += 14;
+            if (correoCliente) { doc.text(`Correo: ${correoCliente}`, 40, y); y += 14; }
+            doc.text(`Método de pago: ${metodoPago}`, 40, y); y += 18;
+
+            // Tabla
+            const startY = y;
+            const colX = [40, 360, 430, 500];
+            doc.setFontSize(11);
+            doc.text('Producto', colX[0], y);
+            doc.text('Cant.', colX[1], y);
+            doc.text('Precio', colX[2], y);
+            doc.text('Subtotal', colX[3], y);
+            y += 8; doc.line(40, y, 550, y); y += 12;
+
+            (items||[]).forEach(it => {
+              const precio = Number(it.precio || it.precio_unitario || 0);
+              const cant = Number(it.cantidad || 0);
+              doc.text(String(it.nombre), colX[0], y);
+              doc.text(String(cant), colX[1], y, { align: 'right' });
+              doc.text(`$${precio.toLocaleString()}`, colX[2], y, { align: 'right' });
+              doc.text(`$${(precio*cant).toLocaleString()}`, colX[3], y, { align: 'right' });
+              y += 16;
             });
-            doc.save(`factura_${venta.id}.pdf`);
+
+            y += 6; doc.line(40, y, 550, y); y += 18;
+            doc.setFontSize(12);
+            doc.text('Total:', 460, y);
+            doc.text(`$${Number(venta?.total||0).toLocaleString()}`, 550, y, { align: 'right' });
+            y += 30;
+            doc.setFontSize(10); doc.text('Gracias por su compra.', 40, y);
+
+            doc.save(`factura_${venta?.id ?? 'venta'}.pdf`);
           } catch (e) {
             console.error('Error generando PDF', e);
-            const w = window.open('', '_blank'); w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Factura N° ${venta.id}</title></head><body>${html}</body></html>`); w.document.close();
+            const w = window.open('', '_blank'); w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Factura N° ${venta?.id ?? '-'}</title></head><body>${html}</body></html>`); w.document.close();
           }
         } else {
-          const w = window.open('', '_blank'); w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Factura N° ${venta.id}</title></head><body>${html}</body></html>`); w.document.close();
+          const w = window.open('', '_blank'); w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Factura N° ${venta?.id ?? '-'}</title></head><body>${html}</body></html>`); w.document.close();
         }
       }
     });

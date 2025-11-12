@@ -68,10 +68,10 @@
 
   <!-- SweetAlert2 -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
   <!-- jsPDF -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
+  <!-- Módulo común del carrito -->
+  <script type="module" src="../assets/js/cartCore.js"></script>
   <script>
 
   // ✅ MOSTRAR CARRITO
@@ -145,7 +145,7 @@
     if (totalEl) totalEl.textContent = "Total: $" + fmt(total);
     if (resumen) resumen.style.display = "block";
 
-  }   <!-- ✅ ESTA LLAVE FALTABA EN TU CÓDIGO ANTES -->
+  }
 
   // ✅ FINALIZAR COMPRA
   async function finalizarCompra() {
